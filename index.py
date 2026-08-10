@@ -340,4 +340,4 @@ if __name__ == "__main__":
     IS_LOCAL = cmdargs.local
     logger = setup_logger(IS_LOCAL)
     database.setup_initial_db()
-    application.run(debug=IS_LOCAL, use_reloader=True, port=8010)
+    application.run(debug=IS_LOCAL, use_reloader=True, port=8020)

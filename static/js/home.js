@@ -1,5 +1,7 @@
 function updateClock() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+  const now = new Date();
+  document.getElementById('hours').textContent = String(now.getHours()).padStart(2, '0');
+  document.getElementById('minutes').textContent = String(now.getMinutes()).padStart(2, '0');
 }
 
 updateClock();

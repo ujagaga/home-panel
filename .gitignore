@@ -3,3 +3,4 @@ client_secret.json
 database.db
 settings.py
 .venv
+app.log

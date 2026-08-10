@@ -11,36 +11,46 @@ body {
 }
 
 .clock {
-  color: #fff;
   font-family: 'Courier New', monospace;
-  font-size: 12vw;
+  font-size: 20vw;
   letter-spacing: 0.05em;
+  background-image: url('../images/image-1.png');
+  background-size: cover;
+  background-position: center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-/* Invisible hover zone at the top-right screen edge */
-.settings_hotzone {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 5px;
-  height: 5px;
-  z-index: 20;
+.colon {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 .settings_icon {
   position: fixed;
-  top: 10px;
-  right: 10px;
+  top: 20px;
+  right: -51px;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #fff;
-  font-size: 1.4rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-  z-index: 19;
+  font-size: 1.8rem;
+  border: 2px solid #fff;
+  border-radius: 8px;
+  transition: right 0.25s ease;
+  z-index: 20;
 }
 
-.settings_hotzone:hover + .settings_icon,
 .settings_icon:hover {
-  opacity: 1;
-  pointer-events: auto;
+  right: 0;
+  color: var(--accent-color);
+  border-color: var(--accent-color);
 }
