@@ -1,0 +1,46 @@
+body {
+  background-color: #000;
+  overflow: hidden;
+}
+
+.clock_wrapper {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clock {
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  font-size: 12vw;
+  letter-spacing: 0.05em;
+}
+
+/* Invisible hover zone at the top-right screen edge */
+.settings_hotzone {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 5px;
+  z-index: 20;
+}
+
+.settings_icon {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  color: #fff;
+  font-size: 1.4rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 19;
+}
+
+.settings_hotzone:hover + .settings_icon,
+.settings_icon:hover {
+  opacity: 1;
+  pointer-events: auto;
+}

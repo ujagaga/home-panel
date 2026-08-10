@@ -1,0 +1,44 @@
+.user_info_row {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  margin-bottom: 1.5rem;
+}
+
+.user_info_row .user_picture {
+  flex-shrink: 0;
+}
+
+.user_text_info {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.user_text_info p {
+  margin: 2px 0;
+  line-height: 1.2;
+}
+
+.user_row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1em;
+  margin-bottom: 1em;
+}
+
+.user_row .user_info_row {
+  margin-bottom: 0;
+}
+
+.update_buttons {
+  display: flex;
+  gap: 0.5em;
+}

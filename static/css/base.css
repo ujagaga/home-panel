@@ -1,0 +1,90 @@
+:root {
+  --accent-color: #1fa3ec;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: sans-serif;
+}
+
+a {
+  text-decoration: none !important;
+}
+
+.container {
+  max-width: 800px;
+  min-width: 200px;
+  width: 90%;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+h1 {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.red_notification {
+  color: red;
+  margin: 0;
+}
+
+/* Navigation */
+.nav_btn {
+  color: white;
+  display: inline-block;
+  margin-bottom: 1rem;
+  padding: 8px 12px;
+  background: #333;
+  border-radius: 4px;
+}
+
+.nav_btn:hover {
+  background: #555;
+}
+
+/* Buttons */
+.save_btn {
+  background-color: #007bff;
+}
+
+.delete_btn {
+  background-color: red;
+}
+
+.save_btn,
+.delete_btn {
+  color: #fff;
+  border: none;
+  padding: 0.6em 1em;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 1em;
+  transition: background 0.2s ease;
+  opacity: 0.8;
+}
+
+.save_btn:hover,
+.delete_btn:hover {
+  opacity: 1;
+}
+
+/* User info */
+.user_picture {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-color);
+}
+
+/* Responsive */
+@media only screen and (max-width: 767px) {
+  .container {
+    min-width: 100vw;
+  }
+}

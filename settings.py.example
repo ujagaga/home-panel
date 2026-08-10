@@ -1,0 +1,17 @@
+APP_TITLE = "Home Panel"
+APP_NAME = "Home_Panel"
+APP_URL = "app_web.url"                         # Set this to your deployed URL
+SUPER_ADMIN = "admin@email.com"                 # Admin email, auto-authorized on first run
+
+MAX_COOKIE_AGE = 60 * 60 * 24 * 30              # If you use the same browser, it will be 30 days until you are asked to login
+
+SMTP_SERVER = "your smtp server without ssl"
+SMTP_PORT = 587
+SMTP_USER = "account_mail@smtp.server"
+SMTP_PASS = "user_account_password"
+
+APP_SECRET_KEY = 'SomeSuperSecretKey123'        # Used for flask secure communication
+
+DB_NAME = "database.db"
+
+CLIENT_SECRETS_FILE = "client_secret.json"
