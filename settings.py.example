@@ -1,6 +1,6 @@
 APP_TITLE = "Home Panel"
 APP_NAME = "Home_Panel"
-APP_URL = "app_web.url"                         # Set this to your deployed URL
+APP_URL = "https://your.domain.here"            # Full origin (scheme + host) nginx will serve, used for CSRF
 SUPER_ADMIN = "admin@email.com"                 # Admin email, auto-authorized on first run
 
 MAX_COOKIE_AGE = 60 * 60 * 24 * 30              # If you use the same browser, it will be 30 days until you are asked to login

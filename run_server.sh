@@ -6,4 +6,4 @@ cd $SCRIPT_DIR
 source .venv/bin/activate
 python3 database.py
 #python3 index.py
-gunicorn -w 1 -b 0.0.0.0:8010 index:application
+gunicorn -w 1 -b 127.0.0.1:8020 index:application
