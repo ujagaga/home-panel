@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const colorInput = document.getElementById('clock_pattern_color');
   const bgColorInput = document.getElementById('clock_pattern_bg_color');
   const sizeSelect = document.getElementById('clock_pattern_size');
+  const bgRow = document.getElementById('clock_pattern_bg_row');
+  const sizeRow = document.getElementById('clock_pattern_size_row');
   const preview = document.getElementById('clock_font_preview');
 
   function loadGoogleFont(query) {
@@ -31,11 +33,16 @@ document.addEventListener('DOMContentLoaded', function () {
     preview.style.fontWeight = weightSelect.value;
 
     const patternOption = patternSelect.options[patternSelect.selectedIndex];
+    const isSolid = patternOption.value === 'Solid';
+    bgRow.style.display = isSolid ? 'none' : '';
+    sizeRow.style.display = isSolid ? 'none' : '';
+
+    const bgColor = isSolid ? colorInput.value : bgColorInput.value;
     const tile = Math.round(patternOption.dataset.tile * sizeSelect.value / 100);
     const params = new URLSearchParams({
       name: patternOption.value,
       color: colorInput.value,
-      bg_color: bgColorInput.value
+      bg_color: bgColor
     });
     preview.style.backgroundImage = `url(/pattern.svg?${params.toString()})`;
     preview.style.backgroundSize = `${tile}px ${tile}px`;

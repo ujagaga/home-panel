@@ -16,39 +16,65 @@
     </div>
   </div>
 
+  <p class="designated_link"><strong>Designated Link:</strong> <a href="{{ designated_link }}">{{ designated_link }}</a></p>
+
   <h1>Settings</h1>
 
   <form method="post" action="{{ url_for('settings_clock_font_post') }}" class="clock_font_form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="clock_font">Clock font</label>
-    <select name="clock_font" id="clock_font">
-      {% for font, google_query in clock_fonts.items() %}
-      <option value="{{ font }}" data-google-font="{{ google_query or '' }}" {% if font == clock_font %}selected{% endif %}>{{ font }}</option>
-      {% endfor %}
-    </select>
-    <label for="clock_font_weight">Weight</label>
-    <select name="clock_font_weight" id="clock_font_weight">
-      {% for weight, label in clock_font_weights.items() %}
-      <option value="{{ weight }}" {% if weight == clock_font_weight %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <label for="clock_pattern">Texture</label>
-    <select name="clock_pattern" id="clock_pattern">
-      {% for name, info in clock_patterns.items() %}
-      <option value="{{ name }}" data-tile="{{ info.tile }}" {% if name == clock_pattern %}selected{% endif %}>{{ name }}</option>
-      {% endfor %}
-    </select>
-    <label for="clock_pattern_color">Color</label>
-    <input type="color" name="clock_pattern_color" id="clock_pattern_color" value="{{ clock_pattern_color }}">
-    <label for="clock_pattern_bg_color">Background</label>
-    <input type="color" name="clock_pattern_bg_color" id="clock_pattern_bg_color" value="{{ clock_pattern_bg_color }}">
-    <label for="clock_pattern_size">Size</label>
-    <select name="clock_pattern_size" id="clock_pattern_size">
-      {% for size, label in clock_pattern_sizes.items() %}
-      <option value="{{ size }}" {% if size == clock_pattern_size %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <span id="clock_font_preview" class="clock_font_preview"></span>
+    <table class="clock_settings_table">
+      <tr>
+        <td><label for="clock_font">Clock font</label></td>
+        <td>
+          <select name="clock_font" id="clock_font">
+            {% for font, google_query in clock_fonts.items() %}
+            <option value="{{ font }}" data-google-font="{{ google_query or '' }}" {% if font == clock_font %}selected{% endif %}>{{ font }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td rowspan="6" class="clock_preview_cell">
+          <span id="clock_font_preview" class="clock_font_preview"></span>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="clock_font_weight">Weight</label></td>
+        <td>
+          <select name="clock_font_weight" id="clock_font_weight">
+            {% for weight, label in clock_font_weights.items() %}
+            <option value="{{ weight }}" {% if weight == clock_font_weight %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="clock_pattern">Texture</label></td>
+        <td>
+          <select name="clock_pattern" id="clock_pattern">
+            {% for name, info in clock_patterns.items() %}
+            <option value="{{ name }}" data-tile="{{ info.tile }}" {% if name == clock_pattern %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="clock_pattern_color">Color</label></td>
+        <td><input type="color" name="clock_pattern_color" id="clock_pattern_color" value="{{ clock_pattern_color }}"></td>
+      </tr>
+      <tr id="clock_pattern_bg_row">
+        <td><label for="clock_pattern_bg_color">Background</label></td>
+        <td><input type="color" name="clock_pattern_bg_color" id="clock_pattern_bg_color" value="{{ clock_pattern_bg_color }}"></td>
+      </tr>
+      <tr id="clock_pattern_size_row">
+        <td><label for="clock_pattern_size">Size</label></td>
+        <td>
+          <select name="clock_pattern_size" id="clock_pattern_size">
+            {% for size, label in clock_pattern_sizes.items() %}
+            <option value="{{ size }}" {% if size == clock_pattern_size %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+    </table>
     <button type="submit" class="save_btn">Save</button>
   </form>
 

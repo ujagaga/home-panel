@@ -1,5 +1,6 @@
 import string
 import random
+import hashlib
 import settings
 from datetime import datetime, timezone
 import logging
@@ -12,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 def generate_token():
     return ''.join(random.choices(string.ascii_letters, k=32))
+
+
+def email_to_key(email: str) -> str:
+    """A short, easy-to-type, non-secret identifier derived from an email address."""
+    digest = hashlib.sha256(email.encode()).hexdigest()
+    return str(int(digest, 16) % 1_000_000).zfill(6)
 
 
 def iso_to_epoch(iso_str: str) -> int:

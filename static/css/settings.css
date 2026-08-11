@@ -7,11 +7,16 @@
 }
 
 .settings_header .nav_btn {
-  margin-bottom: 0;
+  margin: 0 0 0 0.75em;
 }
 
 .settings_header .user_info_row {
-  margin-bottom: 0;
+  margin: 0 0.75em 0 0;
+}
+
+.designated_link {
+  word-break: break-all;
+  margin: 0 0.75em 1.5rem;
 }
 
 .user_info_row {
@@ -60,20 +65,41 @@
 }
 
 .clock_font_form {
-  display: flex;
-  align-items: center;
-  gap: 0.75em;
   margin-bottom: 1.5rem;
 }
 
-.clock_font_form select {
+.clock_settings_table {
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+.clock_settings_table td {
+  border: none;
+  padding: 0.4em 0.6em;
+  vertical-align: middle;
+}
+
+.clock_settings_table select,
+.clock_settings_table input[type="color"] {
+  width: 160px;
+  box-sizing: border-box;
   padding: 0.4em;
   border-radius: 4px;
   border: 1px solid #ccc;
 }
 
+.clock_font_form .save_btn {
+  margin: 0 0 0 0.6em;
+}
+
+.clock_preview_cell {
+  padding-left: 1.5em;
+  text-align: center;
+  vertical-align: middle;
+}
+
 .clock_font_preview {
-  font-size: 1.5rem;
+  font-size: 3rem;
   min-width: 4.5em;
   text-align: center;
   background-repeat: repeat;

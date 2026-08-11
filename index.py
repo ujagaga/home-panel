@@ -6,7 +6,7 @@ pip install flask authlib flask-wtf requests
 """
 
 from flask import (Flask, g, render_template, request, flash, redirect, make_response,
-                   url_for as flask_url_for)
+                   url_for as flask_url_for, abort)
 import time
 import json
 import re
@@ -169,6 +169,7 @@ DEFAULT_CLOCK_FONT_WEIGHT = 400
 # Curated tileable floral background patterns for the clock text. Each has its own
 # native tile size (px) used for background-size so it repeats cleanly.
 CLOCK_PATTERNS = {
+    "Solid": {"template": "floral2", "tile": 60},
     "Daisy Grid": {"template": "floral1", "tile": 80},
     "Clover Bloom": {"template": "floral2", "tile": 60},
     "Vine Blossom": {"template": "floral3", "tile": 100},
@@ -217,12 +218,8 @@ def require_authorized_user():
     return user
 
 
-@application.route('/', methods=['GET'])
-def index():
-    user = require_authorized_user()
-    if not user:
-        return redirect(safe_url_for('login'))
-
+def resolve_clock_display(user):
+    """Builds the home.html template vars for a user's clock appearance settings."""
     clock_font = user.get("clock_font") or DEFAULT_CLOCK_FONT
     clock_font_weight = user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT
     clock_pattern = user.get("clock_pattern") or DEFAULT_CLOCK_PATTERN
@@ -230,21 +227,35 @@ def index():
         clock_pattern = DEFAULT_CLOCK_PATTERN
     clock_pattern_color = user.get("clock_pattern_color") or DEFAULT_CLOCK_PATTERN_COLOR
     clock_pattern_bg_color = user.get("clock_pattern_bg_color") or DEFAULT_CLOCK_PATTERN_BG_COLOR
+    if clock_pattern == "Solid":
+        clock_pattern_bg_color = clock_pattern_color
     clock_pattern_size = user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE
     if clock_pattern_size not in CLOCK_PATTERN_SIZES:
         clock_pattern_size = DEFAULT_CLOCK_PATTERN_SIZE
+
+    return {
+        "clock_font": clock_font,
+        "clock_font_weight": clock_font_weight,
+        "google_font_query": CLOCK_FONTS.get(clock_font),
+        "clock_pattern": clock_pattern,
+        "clock_pattern_color": clock_pattern_color,
+        "clock_pattern_bg_color": clock_pattern_bg_color,
+        "pattern_tile": round(CLOCK_PATTERNS[clock_pattern]["tile"] * clock_pattern_size / 100),
+    }
+
+
+@application.route('/', methods=['GET'])
+def index():
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
 
     resp = make_response(render_template(
         'home.html',
         title=settings.APP_TITLE,
         url_for=safe_url_for,
-        clock_font=clock_font,
-        clock_font_weight=clock_font_weight,
-        google_font_query=CLOCK_FONTS.get(clock_font),
-        clock_pattern=clock_pattern,
-        clock_pattern_color=clock_pattern_color,
-        clock_pattern_bg_color=clock_pattern_bg_color,
-        pattern_tile=round(CLOCK_PATTERNS[clock_pattern]["tile"] * clock_pattern_size / 100)
+        show_settings_icon=True,
+        **resolve_clock_display(user)
     ))
 
     # Add no-cache headers
@@ -253,6 +264,25 @@ def index():
     resp.headers["Expires"] = "0"
 
     return resp
+
+
+@application.route('/u/<key>', methods=['GET'])
+def public_home(key):
+    """Shows a user's clock, styled with their own settings, without requiring login."""
+    user = next(
+        (u for u in database.get_user(connection=g.db) if helper.email_to_key(u["email"]) == key),
+        None
+    )
+    if not user or user["authorized"] < 1:
+        abort(404)
+
+    return render_template(
+        'home.html',
+        title=settings.APP_TITLE,
+        url_for=safe_url_for,
+        show_settings_icon=False,
+        **resolve_clock_display(user)
+    )
 
 
 @application.route('/authorize')
@@ -408,6 +438,7 @@ def settings_page():
         clock_pattern_bg_color=user.get("clock_pattern_bg_color") or DEFAULT_CLOCK_PATTERN_BG_COLOR,
         clock_pattern_sizes=CLOCK_PATTERN_SIZES,
         clock_pattern_size=user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE,
+        designated_link=f"{request.host_url.rstrip('/')}{safe_url_for('public_home', key=helper.email_to_key(user['email']))}",
         title=settings.APP_TITLE,
         url_for=safe_url_for
     )
@@ -433,6 +464,8 @@ def settings_clock_font_post():
     bg_color = request.form.get('clock_pattern_bg_color') or DEFAULT_CLOCK_PATTERN_BG_COLOR
     if not HEX_COLOR_RE.match(bg_color):
         bg_color = DEFAULT_CLOCK_PATTERN_BG_COLOR
+    if pattern == "Solid":
+        bg_color = color
 
     try:
         size = int(request.form.get('clock_pattern_size'))
