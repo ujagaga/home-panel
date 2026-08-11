@@ -189,12 +189,44 @@ CLOCK_PATTERN_SIZES = {
 }
 DEFAULT_CLOCK_PATTERN_SIZE = 100
 
+# Same percentage scale, reused for sizing the weather widget.
+WEATHER_SIZES = CLOCK_PATTERN_SIZES
+DEFAULT_WEATHER_SIZE = 100
+
 HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 # ---------------------- Weather ----------------------
 WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_SECONDS = 30 * 60
 WEATHER_LOOKAHEAD_HOURS = 8
+
+NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
+PLACE_NAME_SUFFIX_RE = re.compile(r'^City of\s+|\s+(Municipality|District|County|Region|Province)$')
+
+
+def reverse_geocode_city(lat, lon):
+    """Best-effort city/town name for a location, or None. Tried in order of
+    specificity; administrative-boundary wording ("City of ..", ".. Municipality")
+    is stripped since Nominatim's naming varies by country."""
+    try:
+        resp = requests.get(NOMINATIM_REVERSE_URL, params={
+            "lat": lat,
+            "lon": lon,
+            "format": "json",
+            "zoom": 14,
+            "addressdetails": 1,
+            "accept-language": "en",
+        }, headers={"User-Agent": f"{settings.APP_TITLE} weather widget"}, timeout=10)
+        resp.raise_for_status()
+        address = resp.json().get("address", {})
+
+        for key in ("town", "village", "city", "municipality", "county"):
+            if address.get(key):
+                return PLACE_NAME_SUFFIX_RE.sub('', address[key]).strip()
+    except Exception as e:
+        logger.exception(f"Reverse geocoding failed: {e}")
+
+    return None
 
 WEATHER_CODE_CATEGORY = {
     0: "Clear", 1: "Mostly Clear", 2: "Partly Cloudy", 3: "Cloudy",
@@ -210,6 +242,7 @@ WEATHER_ICONS = {
     "Fog": "🌫️", "Drizzle": "🌦️", "Rain": "🌧️", "Snow": "❄️", "Thunderstorm": "⛈️",
 }
 WEATHER_DEFAULT_CATEGORY = "Cloudy"
+PRECIP_CATEGORIES = {"Drizzle", "Rain", "Thunderstorm", "Snow"}
 
 _weather_cache = {}
 
@@ -236,6 +269,8 @@ def fetch_weather(lat, lon):
         current_time = datetime.fromisoformat(raw["current"]["time"])
         current_category = WEATHER_CODE_CATEGORY.get(raw["current"]["weather_code"], WEATHER_DEFAULT_CATEGORY)
 
+        current_is_precip = current_category in PRECIP_CATEGORIES
+
         change = None
         ahead = 0
         for t_str, code in zip(raw["hourly"]["time"], raw["hourly"]["weather_code"]):
@@ -246,8 +281,15 @@ def fetch_weather(lat, lon):
             if ahead > WEATHER_LOOKAHEAD_HOURS:
                 break
             category = WEATHER_CODE_CATEGORY.get(code, WEATHER_DEFAULT_CATEGORY)
-            if category != current_category:
-                change = {"category": category, "icon": WEATHER_ICONS.get(category, "☁️"), "at": t.strftime("%H:%M")}
+            category_is_precip = category in PRECIP_CATEGORIES
+
+            if category_is_precip and not current_is_precip:
+                change = {"category": category, "icon": WEATHER_ICONS.get(category, "☁️"),
+                          "at": t.strftime("%H:%M"), "kind": "starting"}
+                break
+            if current_is_precip and not category_is_precip:
+                change = {"category": current_category, "icon": WEATHER_ICONS.get(current_category, "☁️"),
+                          "at": t.strftime("%H:%M"), "kind": "stopping"}
                 break
 
         data = {
@@ -332,6 +374,7 @@ def index():
         url_for=safe_url_for,
         show_settings_icon=True,
         public_key=None,
+        weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
         **resolve_clock_display(user)
     ))
 
@@ -359,6 +402,7 @@ def public_home(key):
         url_for=safe_url_for,
         show_settings_icon=False,
         public_key=key,
+        weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
         **resolve_clock_display(user)
     )
 
@@ -383,7 +427,11 @@ def weather_json():
     if lat is None or lon is None:
         return jsonify({"available": False})
 
-    return jsonify(fetch_weather(lat, lon))
+    # Copy: fetch_weather() may return the shared cached dict, and different users
+    # can round to the same cache key while having different saved city names.
+    data = dict(fetch_weather(lat, lon))
+    data["city"] = user.get("weather_city")
+    return jsonify(data)
 
 
 @application.route('/authorize')
@@ -542,6 +590,8 @@ def settings_page():
         designated_link=f"{request.host_url.rstrip('/')}{safe_url_for('public_home', key=helper.email_to_key(user['email']))}",
         weather_lat=user.get("weather_lat"),
         weather_lon=user.get("weather_lon"),
+        weather_sizes=WEATHER_SIZES,
+        weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
         title=settings.APP_TITLE,
         url_for=safe_url_for
     )
@@ -552,6 +602,13 @@ def settings_weather_post():
     user = require_authorized_user()
     if not user:
         return redirect(safe_url_for('login'))
+
+    try:
+        size = int(request.form.get('weather_size'))
+    except (TypeError, ValueError):
+        size = DEFAULT_WEATHER_SIZE
+    if size in WEATHER_SIZES:
+        database.update_user(connection=g.db, email=user["email"], weather_size=size)
 
     lat_raw = request.form.get('weather_lat', '').strip()
     lon_raw = request.form.get('weather_lon', '').strip()
@@ -570,7 +627,13 @@ def settings_weather_post():
             flash("Coordinates out of range.")
             return redirect(safe_url_for('settings_page'))
 
-        database.set_weather_location(connection=g.db, email=user["email"], lat=lat, lon=lon)
+        # Only hit the geocoder when the location actually changed.
+        if lat == user.get("weather_lat") and lon == user.get("weather_lon") and user.get("weather_city"):
+            city = user.get("weather_city")
+        else:
+            city = reverse_geocode_city(lat, lon)
+
+        database.set_weather_location(connection=g.db, email=user["email"], lat=lat, lon=lon, city=city)
 
     database.sync_temp_db_to_disk(connection=g.db)
     return redirect(safe_url_for('settings_page'))

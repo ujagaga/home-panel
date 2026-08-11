@@ -109,18 +109,27 @@
 }
 
 .weather_form {
-  display: flex;
-  align-items: center;
-  gap: 0.75em;
   margin-bottom: 0.5rem;
 }
 
-.weather_form input[type="number"] {
-  width: 120px;
+.weather_form input[type="text"] {
+  width: 320px;
   box-sizing: border-box;
   padding: 0.4em;
   border-radius: 4px;
   border: 1px solid #ccc;
+}
+
+.weather_form input[type="number"] {
+  width: 160px;
+  box-sizing: border-box;
+  padding: 0.4em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.weather_form .save_btn {
+  margin: 0 0 0 0.6em;
 }
 
 .weather_hint {

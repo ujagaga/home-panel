@@ -18,13 +18,13 @@
 
   <p class="designated_link"><strong>Designated Link:</strong> <a href="{{ designated_link }}">{{ designated_link }}</a></p>
 
-  <h1>Settings</h1>
+  <h1>Clock Settings</h1>
 
   <form method="post" action="{{ url_for('settings_clock_font_post') }}" class="clock_font_form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <table class="clock_settings_table">
       <tr>
-        <td><label for="clock_font">Clock font</label></td>
+        <td><label for="clock_font">Font</label></td>
         <td>
           <select name="clock_font" id="clock_font">
             {% for font, google_query in clock_fonts.items() %}
@@ -83,13 +83,35 @@
   <h1>Weather</h1>
   <form method="post" action="{{ url_for('settings_weather_post') }}" class="weather_form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="weather_lat">Latitude</label>
-    <input type="number" step="0.0001" min="-90" max="90" name="weather_lat" id="weather_lat" value="{{ weather_lat if weather_lat is not none else '' }}">
-    <label for="weather_lon">Longitude</label>
-    <input type="number" step="0.0001" min="-180" max="180" name="weather_lon" id="weather_lon" value="{{ weather_lon if weather_lon is not none else '' }}">
+    <table class="clock_settings_table">
+      <tr>
+        <td><label for="weather_url">Google Maps link</label></td>
+        <td><input type="text" name="weather_url" id="weather_url" placeholder="Paste a Google Maps URL"></td>
+      </tr>
+      <tr>
+        <td><label for="weather_lat">Latitude</label></td>
+        <td><input type="number" step="0.0001" min="-90" max="90" name="weather_lat" id="weather_lat" value="{{ weather_lat if weather_lat is not none else '' }}"></td>
+      </tr>
+      <tr>
+        <td><label for="weather_lon">Longitude</label></td>
+        <td><input type="number" step="0.0001" min="-180" max="180" name="weather_lon" id="weather_lon" value="{{ weather_lon if weather_lon is not none else '' }}"></td>
+      </tr>
+      <tr>
+        <td><label for="weather_size">Size</label></td>
+        <td>
+          <select name="weather_size" id="weather_size">
+            {% for size, label in weather_sizes.items() %}
+            <option value="{{ size }}" {% if size == weather_size %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+    </table>
     <button type="submit" class="save_btn">Save</button>
   </form>
-  <p class="weather_hint">Leave both blank to hide the weather widget on your home page.</p>
+  {% if weather_lat is none or weather_lon is none %}
+  <p class="weather_hint">No location set — the weather widget is hidden on your home page.</p>
+  {% endif %}
 
   {% if admin %}
   <h1>Pending Users</h1>

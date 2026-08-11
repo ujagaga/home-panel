@@ -55,4 +55,38 @@ document.addEventListener('DOMContentLoaded', function () {
   bgColorInput.addEventListener('input', updatePreview);
   sizeSelect.addEventListener('change', updatePreview);
   updatePreview();
+
+  // Weather: pasting a Google Maps link fills the lat/lon fields, which stay
+  // editable and are what actually gets saved (a blank/unrecognized link
+  // never touches them).
+  const weatherUrlInput = document.getElementById('weather_url');
+  const weatherLatInput = document.getElementById('weather_lat');
+  const weatherLonInput = document.getElementById('weather_lon');
+
+  if (weatherUrlInput && weatherLatInput && weatherLonInput) {
+    function extractLatLon(url) {
+      // A URL can embed several !3d..!4d.. pairs (e.g. a breadcrumb city
+      // reference before the actual pinned address) — the real place is the
+      // LAST one, not the first. Falls back to q=lat,lon, then the map's
+      // current center (@lat,lon,zoom), which is the least precise.
+      const pinMatches = [...url.matchAll(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/g)];
+      if (pinMatches.length) {
+        const last = pinMatches[pinMatches.length - 1];
+        return [last[1], last[2]];
+      }
+      const q = url.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (q) return [q[1], q[2]];
+      const at = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+      if (at) return [at[1], at[2]];
+      return null;
+    }
+
+    weatherUrlInput.addEventListener('input', function () {
+      const latlon = extractLatLon(weatherUrlInput.value);
+      if (latlon) {
+        weatherLatInput.value = Number(latlon[0]).toFixed(4);
+        weatherLonInput.value = Number(latlon[1]).toFixed(4);
+      }
+    });
+  }
 });

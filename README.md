@@ -1,14 +1,37 @@
 # Home Panel
 
-Python3 Flask home panel app.
+Python3 Flask app that shows a full-screen digital clock, with per-user appearance settings and an
+optional weather widget. Login is done using Google OAuth2, so user emails must be Google accounts
+— there is no password.
 
-The home page shows a full-screen black background with a digital clock (using the browser's own
-time zone). There is no navigation on the home page — hover over the top-right 5px screen edge to
-reveal a hidden settings icon.
+## Home page
 
-Login is done using Google OAuth2, so user emails must be Google accounts. There is no password.
+- Full-screen black background with a 24h digital clock (`HH:MM`, blinking colon), using the
+  browser's own time zone. Requires login.
+- No navigation bar. A settings icon sits mostly off-screen at the top-right corner (only its
+  border pokes into view) and slides fully into view on hover.
+- If a location is configured (see Weather below), a small widget in the top-left corner shows the
+  city, current temperature/condition, and — only if rain or snow is about to start or stop within
+  the next 8 hours — a second line saying when.
+- Each user gets a "Designated Link" (shown on the settings page) of the form `/u/<code>` that
+  shows their clock and weather with their own settings, with no login required. The code is a
+  short, non-secret, deterministic identifier derived from the user's email (not a hash of
+  anything sensitive — don't rely on it being unguessable).
 
-# User accounts
+## Settings page
+
+Reached via the gear icon; requires login.
+
+- **Clock Settings**: font (a curated list of Google Fonts, loaded on demand), weight, a tileable
+  background texture for the clock digits (including a "Solid" option), its color and background
+  color, and its size — with a live preview next to the controls.
+- **Weather**: paste a Google Maps link (the lat/lon are extracted automatically and shown in
+  editable fields — you can also just type coordinates directly), and a size for the widget. The
+  city name is reverse-geocoded automatically via OpenStreetMap's Nominatim and shown above the
+  temperature. Leave both coordinate fields blank and save to remove the widget.
+- **User management** (admin only): approve or remove pending users, promote users to admin.
+
+## User accounts
 
 One admin account is set as `SUPER_ADMIN` in `settings.py` and is authorized automatically. Any
 other user who opens the settings page is asked to sign in with Google. On their first login they
@@ -32,12 +55,21 @@ API and download the client secrets file. Rename it to match `CLIENT_SECRETS_FIL
 
 Deploy this on a Raspberry Pi, dedicated hosting, Oracle cloud instance or any other computer. If
 you deploy on a local computer, you will need to make a reverse HTTP tunnel or provide a public IP.
-A reverse tunnel should provide its own SSL certificate to support HTTPS, which is necessary for
-Google OAuth2 authentication.
+A reverse tunnel — or a reverse proxy like nginx in front of gunicorn — should provide its own SSL
+certificate to support HTTPS, which is necessary for Google OAuth2 authentication. `run_server.sh`
+runs gunicorn bound to `127.0.0.1`, so a reverse proxy is expected to be the public-facing side.
+
+For local development without a real Google login, run `python index.py --local` and use
+`http://127.0.0.1:8020` — this auto-authorizes you as `SUPER_ADMIN` and skips the OAuth flow.
 
 ## Note
 - The admin email is set in `settings.py` (`SUPER_ADMIN`) and is automatically enabled.
+- The weather widget uses Open-Meteo (forecast) and Nominatim (reverse geocoding for the city
+  name), both free and requiring no API key. Be considerate of their usage policies if you deploy
+  this for many users.
 - The SQLite database will be located in this folder, but at startup it will be copied to
   `/dev/shm/`. This is the shared memory space in RAM and will prevent storage wear on a Raspberry
   Pi SD card due to frequent writes. When you save any settings from the UI, the temporary database
-  in shared memory will be copied over the main database to persist the changes.
+  in shared memory will be copied over the main database to persist the changes. Schema changes
+  (new settings columns) are applied automatically to both copies on every service restart, so a
+  `git pull` + restart is enough after an update — no manual migration needed.

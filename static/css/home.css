@@ -67,6 +67,12 @@ body {
   left: 20px;
   color: #fff;
   z-index: 15;
+  transform-origin: top left;
+}
+
+.weather_city {
+  font-size: 1rem;
+  font-weight: bold;
 }
 
 .weather_current {

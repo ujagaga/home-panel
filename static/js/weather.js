@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const key = widget.dataset.key;
   const url = key ? `/weather.json?key=${encodeURIComponent(key)}` : '/weather.json';
+  const scale = (Number(widget.dataset.size) || 100) / 100;
 
   function render(data) {
     if (!data.available) {
@@ -11,12 +12,18 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    let html = `<div class="weather_current">${data.current.icon} ${data.current.temp}&deg;C</div>`;
+    let html = '';
+    if (data.city) {
+      html += `<div class="weather_city">${data.city}</div>`;
+    }
+    html += `<div class="weather_current">${data.current.icon} ${data.current.temp}&deg;C</div>`;
     if (data.change) {
-      html += `<div class="weather_change">${data.change.icon} ${data.change.category} expected at ${data.change.at}</div>`;
+      const verb = data.change.kind === 'stopping' ? 'ending' : 'expected';
+      html += `<div class="weather_change">${data.change.icon} ${data.change.category} ${verb} at ${data.change.at}</div>`;
     }
     widget.innerHTML = html;
-    widget.style.display = '';
+    widget.style.transform = `scale(${scale})`;
+    widget.style.display = 'block';
   }
 
   function fetchWeather() {

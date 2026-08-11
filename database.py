@@ -41,7 +41,9 @@ def init_database(connection):
                clock_pattern_bg_color TEXT,
                clock_pattern_size INTEGER,
                weather_lat REAL,
-               weather_lon REAL
+               weather_lon REAL,
+               weather_size INTEGER,
+               weather_city TEXT
            );
            """
         cursor.execute(sql)
@@ -81,6 +83,12 @@ def init_database(connection):
             connection.commit()
         if "weather_lon" not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN weather_lon REAL;")
+            connection.commit()
+        if "weather_size" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN weather_size INTEGER;")
+            connection.commit()
+        if "weather_city" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN weather_city TEXT;")
             connection.commit()
 
     cursor.close()
@@ -190,7 +198,7 @@ def get_user(connection, email: str = None, token: str = None, authorized: int =
 def update_user(connection, email: str, token: str = None, authorized: int = None, picture: str = None,
                  clock_font: str = None, clock_font_weight: int = None,
                  clock_pattern: str = None, clock_pattern_color: str = None, clock_pattern_bg_color: str = None,
-                 clock_pattern_size: int = None):
+                 clock_pattern_size: int = None, weather_size: int = None):
     user = get_user(connection, email=email)
 
     if user:
@@ -212,13 +220,15 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             user["clock_pattern_bg_color"] = clock_pattern_bg_color
         if clock_pattern_size is not None:
             user["clock_pattern_size"] = clock_pattern_size
+        if weather_size is not None:
+            user["weather_size"] = weather_size
 
         sql = """UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ?,
-                 clock_pattern = ?, clock_pattern_color = ?, clock_pattern_bg_color = ?, clock_pattern_size = ?
-                 WHERE email = ?;"""
+                 clock_pattern = ?, clock_pattern_color = ?, clock_pattern_bg_color = ?, clock_pattern_size = ?,
+                 weather_size = ? WHERE email = ?;"""
         params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"],
                    user["clock_pattern"], user["clock_pattern_color"], user["clock_pattern_bg_color"],
-                   user["clock_pattern_size"], email)
+                   user["clock_pattern_size"], user["weather_size"], email)
 
         try:
             connection.execute(sql, params)
@@ -228,12 +238,12 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             logger.exception(f"ERROR adding user to db on line {exc_tb.tb_lineno}!\n\t{exc}")
 
 
-def set_weather_location(connection, email: str, lat, lon):
-    """Separate from update_user because lat/lon legitimately need to be set to NULL (cleared)."""
-    sql = "UPDATE users SET weather_lat = ?, weather_lon = ? WHERE email = ?;"
+def set_weather_location(connection, email: str, lat, lon, city=None):
+    """Separate from update_user because lat/lon/city legitimately need to be set to NULL (cleared)."""
+    sql = "UPDATE users SET weather_lat = ?, weather_lon = ?, weather_city = ? WHERE email = ?;"
 
     try:
-        connection.execute(sql, (lat, lon, email))
+        connection.execute(sql, (lat, lon, city, email))
         connection.commit()
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
