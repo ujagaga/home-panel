@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
   const fontSelect = document.getElementById('clock_font');
   const weightSelect = document.getElementById('clock_font_weight');
+  const patternSelect = document.getElementById('clock_pattern');
+  const colorInput = document.getElementById('clock_pattern_color');
+  const bgColorInput = document.getElementById('clock_pattern_bg_color');
+  const sizeSelect = document.getElementById('clock_pattern_size');
   const preview = document.getElementById('clock_font_preview');
 
   function loadGoogleFont(query) {
@@ -25,9 +29,23 @@ document.addEventListener('DOMContentLoaded', function () {
     preview.textContent = `${hours}:${minutes}`;
     preview.style.fontFamily = `'${fontOption.value}', monospace`;
     preview.style.fontWeight = weightSelect.value;
+
+    const patternOption = patternSelect.options[patternSelect.selectedIndex];
+    const tile = Math.round(patternOption.dataset.tile * sizeSelect.value / 100);
+    const params = new URLSearchParams({
+      name: patternOption.value,
+      color: colorInput.value,
+      bg_color: bgColorInput.value
+    });
+    preview.style.backgroundImage = `url(/pattern.svg?${params.toString()})`;
+    preview.style.backgroundSize = `${tile}px ${tile}px`;
   }
 
   fontSelect.addEventListener('change', updatePreview);
   weightSelect.addEventListener('change', updatePreview);
+  patternSelect.addEventListener('change', updatePreview);
+  colorInput.addEventListener('input', updatePreview);
+  bgColorInput.addEventListener('input', updatePreview);
+  sizeSelect.addEventListener('change', updatePreview);
   updatePreview();
 });

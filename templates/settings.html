@@ -32,6 +32,22 @@
       <option value="{{ weight }}" {% if weight == clock_font_weight %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    <label for="clock_pattern">Texture</label>
+    <select name="clock_pattern" id="clock_pattern">
+      {% for name, info in clock_patterns.items() %}
+      <option value="{{ name }}" data-tile="{{ info.tile }}" {% if name == clock_pattern %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <label for="clock_pattern_color">Color</label>
+    <input type="color" name="clock_pattern_color" id="clock_pattern_color" value="{{ clock_pattern_color }}">
+    <label for="clock_pattern_bg_color">Background</label>
+    <input type="color" name="clock_pattern_bg_color" id="clock_pattern_bg_color" value="{{ clock_pattern_bg_color }}">
+    <label for="clock_pattern_size">Size</label>
+    <select name="clock_pattern_size" id="clock_pattern_size">
+      {% for size, label in clock_pattern_sizes.items() %}
+      <option value="{{ size }}" {% if size == clock_pattern_size %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
     <span id="clock_font_preview" class="clock_font_preview"></span>
     <button type="submit" class="save_btn">Save</button>
   </form>

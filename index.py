@@ -9,6 +9,7 @@ from flask import (Flask, g, render_template, request, flash, redirect, make_res
                    url_for as flask_url_for)
 import time
 import json
+import re
 import sys
 import os
 import database
@@ -165,6 +166,28 @@ CLOCK_FONT_WEIGHTS = {
 }
 DEFAULT_CLOCK_FONT_WEIGHT = 400
 
+# Curated tileable floral background patterns for the clock text. Each has its own
+# native tile size (px) used for background-size so it repeats cleanly.
+CLOCK_PATTERNS = {
+    "Daisy Grid": {"template": "floral1", "tile": 80},
+    "Clover Bloom": {"template": "floral2", "tile": 60},
+    "Vine Blossom": {"template": "floral3", "tile": 100},
+}
+DEFAULT_CLOCK_PATTERN = "Daisy Grid"
+DEFAULT_CLOCK_PATTERN_COLOR = "#e8708a"
+DEFAULT_CLOCK_PATTERN_BG_COLOR = "#000000"
+
+# Percentage of each pattern's native tile size.
+CLOCK_PATTERN_SIZES = {
+    50: "Small",
+    100: "Medium",
+    150: "Large",
+    200: "Extra Large",
+}
+DEFAULT_CLOCK_PATTERN_SIZE = 100
+
+HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
+
 
 @application.before_request
 def before_request():
@@ -202,6 +225,14 @@ def index():
 
     clock_font = user.get("clock_font") or DEFAULT_CLOCK_FONT
     clock_font_weight = user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT
+    clock_pattern = user.get("clock_pattern") or DEFAULT_CLOCK_PATTERN
+    if clock_pattern not in CLOCK_PATTERNS:
+        clock_pattern = DEFAULT_CLOCK_PATTERN
+    clock_pattern_color = user.get("clock_pattern_color") or DEFAULT_CLOCK_PATTERN_COLOR
+    clock_pattern_bg_color = user.get("clock_pattern_bg_color") or DEFAULT_CLOCK_PATTERN_BG_COLOR
+    clock_pattern_size = user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE
+    if clock_pattern_size not in CLOCK_PATTERN_SIZES:
+        clock_pattern_size = DEFAULT_CLOCK_PATTERN_SIZE
 
     resp = make_response(render_template(
         'home.html',
@@ -209,7 +240,11 @@ def index():
         url_for=safe_url_for,
         clock_font=clock_font,
         clock_font_weight=clock_font_weight,
-        google_font_query=CLOCK_FONTS.get(clock_font)
+        google_font_query=CLOCK_FONTS.get(clock_font),
+        clock_pattern=clock_pattern,
+        clock_pattern_color=clock_pattern_color,
+        clock_pattern_bg_color=clock_pattern_bg_color,
+        pattern_tile=round(CLOCK_PATTERNS[clock_pattern]["tile"] * clock_pattern_size / 100)
     ))
 
     # Add no-cache headers
@@ -314,6 +349,23 @@ def oauth2callback():
     return response
 
 
+@application.route('/pattern.svg')
+def pattern_svg():
+    name = request.args.get('name', DEFAULT_CLOCK_PATTERN)
+    color = request.args.get('color', DEFAULT_CLOCK_PATTERN_COLOR)
+    bg_color = request.args.get('bg_color', DEFAULT_CLOCK_PATTERN_BG_COLOR)
+
+    pattern = CLOCK_PATTERNS.get(name, CLOCK_PATTERNS[DEFAULT_CLOCK_PATTERN])
+    if not HEX_COLOR_RE.match(color):
+        color = DEFAULT_CLOCK_PATTERN_COLOR
+    if not HEX_COLOR_RE.match(bg_color):
+        bg_color = DEFAULT_CLOCK_PATTERN_BG_COLOR
+
+    resp = make_response(render_template(f"patterns/{pattern['template']}.svg", color=color, background_color=bg_color))
+    resp.headers["Content-Type"] = "image/svg+xml"
+    return resp
+
+
 @application.route('/settings', methods=['GET'])
 def settings_page():
     user = require_authorized_user()
@@ -350,6 +402,12 @@ def settings_page():
         clock_font=user.get("clock_font") or DEFAULT_CLOCK_FONT,
         clock_font_weights=CLOCK_FONT_WEIGHTS,
         clock_font_weight=user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT,
+        clock_patterns=CLOCK_PATTERNS,
+        clock_pattern=user.get("clock_pattern") or DEFAULT_CLOCK_PATTERN,
+        clock_pattern_color=user.get("clock_pattern_color") or DEFAULT_CLOCK_PATTERN_COLOR,
+        clock_pattern_bg_color=user.get("clock_pattern_bg_color") or DEFAULT_CLOCK_PATTERN_BG_COLOR,
+        clock_pattern_sizes=CLOCK_PATTERN_SIZES,
+        clock_pattern_size=user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE,
         title=settings.APP_TITLE,
         url_for=safe_url_for
     )
@@ -367,8 +425,25 @@ def settings_clock_font_post():
     except (TypeError, ValueError):
         weight = DEFAULT_CLOCK_FONT_WEIGHT
 
-    if font in CLOCK_FONTS and weight in CLOCK_FONT_WEIGHTS:
-        database.update_user(connection=g.db, email=user["email"], clock_font=font, clock_font_weight=weight)
+    pattern = request.form.get('clock_pattern')
+    color = request.form.get('clock_pattern_color') or DEFAULT_CLOCK_PATTERN_COLOR
+    if not HEX_COLOR_RE.match(color):
+        color = DEFAULT_CLOCK_PATTERN_COLOR
+
+    bg_color = request.form.get('clock_pattern_bg_color') or DEFAULT_CLOCK_PATTERN_BG_COLOR
+    if not HEX_COLOR_RE.match(bg_color):
+        bg_color = DEFAULT_CLOCK_PATTERN_BG_COLOR
+
+    try:
+        size = int(request.form.get('clock_pattern_size'))
+    except (TypeError, ValueError):
+        size = DEFAULT_CLOCK_PATTERN_SIZE
+
+    if (font in CLOCK_FONTS and weight in CLOCK_FONT_WEIGHTS and pattern in CLOCK_PATTERNS
+            and size in CLOCK_PATTERN_SIZES):
+        database.update_user(connection=g.db, email=user["email"], clock_font=font, clock_font_weight=weight,
+                              clock_pattern=pattern, clock_pattern_color=color, clock_pattern_bg_color=bg_color,
+                              clock_pattern_size=size)
         database.sync_temp_db_to_disk(connection=g.db)
 
     return redirect(safe_url_for('settings_page'))

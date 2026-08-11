@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100%" height="100%" fill="{{ background_color }}"/>
+  <g fill="{{ color }}">
+    <path d="M35 70 C 20 65, 15 50, 25 40 C 35 50, 35 60, 35 70 Z"/>
+    <path d="M45 75 C 55 65, 60 50, 50 40 C 45 55, 42 65, 45 75 Z"/>
+    <circle cx="30" cy="18" r="7"/>
+    <circle cx="42" cy="10" r="7"/>
+    <circle cx="54" cy="18" r="7"/>
+    <circle cx="54" cy="30" r="7"/>
+    <circle cx="42" cy="38" r="7"/>
+    <circle cx="30" cy="30" r="7"/>
+    <circle cx="42" cy="24" r="5"/>
+  </g>
+</svg>

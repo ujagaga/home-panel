@@ -35,7 +35,11 @@ def init_database(connection):
                authorized INTEGER DEFAULT 0,
                last_seen TEXT,
                clock_font TEXT,
-               clock_font_weight INTEGER
+               clock_font_weight INTEGER,
+               clock_pattern TEXT,
+               clock_pattern_color TEXT,
+               clock_pattern_bg_color TEXT,
+               clock_pattern_size INTEGER
            );
            """
         cursor.execute(sql)
@@ -57,6 +61,18 @@ def init_database(connection):
             connection.commit()
         if "clock_font_weight" not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN clock_font_weight INTEGER;")
+            connection.commit()
+        if "clock_pattern" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_pattern TEXT;")
+            connection.commit()
+        if "clock_pattern_color" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_pattern_color TEXT;")
+            connection.commit()
+        if "clock_pattern_bg_color" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_pattern_bg_color TEXT;")
+            connection.commit()
+        if "clock_pattern_size" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_pattern_size INTEGER;")
             connection.commit()
 
     cursor.close()
@@ -164,7 +180,9 @@ def get_user(connection, email: str = None, token: str = None, authorized: int =
 
 
 def update_user(connection, email: str, token: str = None, authorized: int = None, picture: str = None,
-                 clock_font: str = None, clock_font_weight: int = None):
+                 clock_font: str = None, clock_font_weight: int = None,
+                 clock_pattern: str = None, clock_pattern_color: str = None, clock_pattern_bg_color: str = None,
+                 clock_pattern_size: int = None):
     user = get_user(connection, email=email)
 
     if user:
@@ -178,9 +196,21 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             user["clock_font"] = clock_font
         if clock_font_weight is not None:
             user["clock_font_weight"] = clock_font_weight
+        if clock_pattern is not None:
+            user["clock_pattern"] = clock_pattern
+        if clock_pattern_color is not None:
+            user["clock_pattern_color"] = clock_pattern_color
+        if clock_pattern_bg_color is not None:
+            user["clock_pattern_bg_color"] = clock_pattern_bg_color
+        if clock_pattern_size is not None:
+            user["clock_pattern_size"] = clock_pattern_size
 
-        sql = "UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ? WHERE email = ?;"
-        params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"], email)
+        sql = """UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ?,
+                 clock_pattern = ?, clock_pattern_color = ?, clock_pattern_bg_color = ?, clock_pattern_size = ?
+                 WHERE email = ?;"""
+        params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"],
+                   user["clock_pattern"], user["clock_pattern_color"], user["clock_pattern_bg_color"],
+                   user["clock_pattern_size"], email)
 
         try:
             connection.execute(sql, params)

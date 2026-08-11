@@ -20,9 +20,7 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 20vw;
   letter-spacing: 0.05em;
-  background-image: url('../images/image-1.png');
-  background-size: cover;
-  background-position: center;
+  background-repeat: repeat;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

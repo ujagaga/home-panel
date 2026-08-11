@@ -76,4 +76,8 @@
   font-size: 1.5rem;
   min-width: 4.5em;
   text-align: center;
+  background-repeat: repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
