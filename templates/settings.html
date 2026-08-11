@@ -80,6 +80,17 @@
 
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
+  <h1>Weather</h1>
+  <form method="post" action="{{ url_for('settings_weather_post') }}" class="weather_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="weather_lat">Latitude</label>
+    <input type="number" step="0.0001" min="-90" max="90" name="weather_lat" id="weather_lat" value="{{ weather_lat if weather_lat is not none else '' }}">
+    <label for="weather_lon">Longitude</label>
+    <input type="number" step="0.0001" min="-180" max="180" name="weather_lon" id="weather_lon" value="{{ weather_lon if weather_lon is not none else '' }}">
+    <button type="submit" class="save_btn">Save</button>
+  </form>
+  <p class="weather_hint">Leave both blank to hide the weather widget on your home page.</p>
+
   {% if admin %}
   <h1>Pending Users</h1>
   {% if unauthorized_users %}

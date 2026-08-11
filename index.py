@@ -6,12 +6,14 @@ pip install flask authlib flask-wtf requests
 """
 
 from flask import (Flask, g, render_template, request, flash, redirect, make_response,
-                   url_for as flask_url_for, abort)
+                   url_for as flask_url_for, abort, jsonify)
 import time
 import json
 import re
 import sys
 import os
+import requests
+from datetime import datetime
 import database
 import helper
 from authlib.integrations.flask_client import OAuth
@@ -189,6 +191,80 @@ DEFAULT_CLOCK_PATTERN_SIZE = 100
 
 HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
+# ---------------------- Weather ----------------------
+WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
+WEATHER_CACHE_SECONDS = 30 * 60
+WEATHER_LOOKAHEAD_HOURS = 8
+
+WEATHER_CODE_CATEGORY = {
+    0: "Clear", 1: "Mostly Clear", 2: "Partly Cloudy", 3: "Cloudy",
+    45: "Fog", 48: "Fog",
+    51: "Drizzle", 53: "Drizzle", 55: "Drizzle", 56: "Drizzle", 57: "Drizzle",
+    61: "Rain", 63: "Rain", 65: "Rain", 66: "Rain", 67: "Rain",
+    71: "Snow", 73: "Snow", 75: "Snow", 77: "Snow", 85: "Snow", 86: "Snow",
+    80: "Rain", 81: "Rain", 82: "Rain",
+    95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm",
+}
+WEATHER_ICONS = {
+    "Clear": "☀️", "Mostly Clear": "🌤️", "Partly Cloudy": "⛅", "Cloudy": "☁️",
+    "Fog": "🌫️", "Drizzle": "🌦️", "Rain": "🌧️", "Snow": "❄️", "Thunderstorm": "⛈️",
+}
+WEATHER_DEFAULT_CATEGORY = "Cloudy"
+
+_weather_cache = {}
+
+
+def fetch_weather(lat, lon):
+    cache_key = (round(lat, 2), round(lon, 2))
+    cached = _weather_cache.get(cache_key)
+    now = time.time()
+    if cached and now - cached["ts"] < WEATHER_CACHE_SECONDS:
+        return cached["data"]
+
+    try:
+        resp = requests.get(WEATHER_API_URL, params={
+            "latitude": lat,
+            "longitude": lon,
+            "current": "temperature_2m,weather_code",
+            "hourly": "weather_code",
+            "forecast_days": 2,
+            "timezone": "auto",
+        }, timeout=10)
+        resp.raise_for_status()
+        raw = resp.json()
+
+        current_time = datetime.fromisoformat(raw["current"]["time"])
+        current_category = WEATHER_CODE_CATEGORY.get(raw["current"]["weather_code"], WEATHER_DEFAULT_CATEGORY)
+
+        change = None
+        ahead = 0
+        for t_str, code in zip(raw["hourly"]["time"], raw["hourly"]["weather_code"]):
+            t = datetime.fromisoformat(t_str)
+            if t <= current_time:
+                continue
+            ahead += 1
+            if ahead > WEATHER_LOOKAHEAD_HOURS:
+                break
+            category = WEATHER_CODE_CATEGORY.get(code, WEATHER_DEFAULT_CATEGORY)
+            if category != current_category:
+                change = {"category": category, "icon": WEATHER_ICONS.get(category, "☁️"), "at": t.strftime("%H:%M")}
+                break
+
+        data = {
+            "available": True,
+            "current": {
+                "temp": round(raw["current"]["temperature_2m"]),
+                "category": current_category,
+                "icon": WEATHER_ICONS.get(current_category, "☁️"),
+            },
+            "change": change,
+        }
+        _weather_cache[cache_key] = {"data": data, "ts": now}
+        return data
+    except Exception as e:
+        logger.exception(f"Weather fetch failed: {e}")
+        return cached["data"] if cached else {"available": False}
+
 
 @application.before_request
 def before_request():
@@ -255,6 +331,7 @@ def index():
         title=settings.APP_TITLE,
         url_for=safe_url_for,
         show_settings_icon=True,
+        public_key=None,
         **resolve_clock_display(user)
     ))
 
@@ -281,8 +358,32 @@ def public_home(key):
         title=settings.APP_TITLE,
         url_for=safe_url_for,
         show_settings_icon=False,
+        public_key=key,
         **resolve_clock_display(user)
     )
+
+
+@application.route('/weather.json')
+def weather_json():
+    key = request.args.get('key')
+    if key:
+        user = next(
+            (u for u in database.get_user(connection=g.db) if helper.email_to_key(u["email"]) == key),
+            None
+        )
+        if not user or user["authorized"] < 1:
+            return jsonify({"available": False}), 404
+    else:
+        user = require_authorized_user()
+        if not user:
+            return jsonify({"available": False}), 401
+
+    lat = user.get("weather_lat")
+    lon = user.get("weather_lon")
+    if lat is None or lon is None:
+        return jsonify({"available": False})
+
+    return jsonify(fetch_weather(lat, lon))
 
 
 @application.route('/authorize')
@@ -439,9 +540,40 @@ def settings_page():
         clock_pattern_sizes=CLOCK_PATTERN_SIZES,
         clock_pattern_size=user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE,
         designated_link=f"{request.host_url.rstrip('/')}{safe_url_for('public_home', key=helper.email_to_key(user['email']))}",
+        weather_lat=user.get("weather_lat"),
+        weather_lon=user.get("weather_lon"),
         title=settings.APP_TITLE,
         url_for=safe_url_for
     )
+
+
+@application.route('/settings/weather', methods=['POST'])
+def settings_weather_post():
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
+
+    lat_raw = request.form.get('weather_lat', '').strip()
+    lon_raw = request.form.get('weather_lon', '').strip()
+
+    if not lat_raw or not lon_raw:
+        database.set_weather_location(connection=g.db, email=user["email"], lat=None, lon=None)
+    else:
+        try:
+            lat = float(lat_raw)
+            lon = float(lon_raw)
+        except ValueError:
+            flash("Invalid coordinates.")
+            return redirect(safe_url_for('settings_page'))
+
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            flash("Coordinates out of range.")
+            return redirect(safe_url_for('settings_page'))
+
+        database.set_weather_location(connection=g.db, email=user["email"], lat=lat, lon=lon)
+
+    database.sync_temp_db_to_disk(connection=g.db)
+    return redirect(safe_url_for('settings_page'))
 
 
 @application.route('/settings/clock_font', methods=['POST'])

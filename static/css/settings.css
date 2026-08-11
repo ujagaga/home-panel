@@ -107,3 +107,24 @@
   background-clip: text;
   color: transparent;
 }
+
+.weather_form {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: 0.5rem;
+}
+
+.weather_form input[type="number"] {
+  width: 120px;
+  box-sizing: border-box;
+  padding: 0.4em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.weather_hint {
+  font-size: 0.85em;
+  color: #777;
+  margin: 0 0 1.5rem;
+}

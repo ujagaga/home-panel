@@ -59,3 +59,21 @@ body {
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
+
+.weather_widget {
+  display: none;
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: #fff;
+  z-index: 15;
+}
+
+.weather_current {
+  font-size: 1.4rem;
+}
+
+.weather_change {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
