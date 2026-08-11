@@ -141,6 +141,31 @@ if os.path.isfile(client_secrets_path):
         logger.error(f"Failed to register Google OAuth: {e}")
 
 
+# Curated clock fonts. Value is the Google Fonts family query param, or None for the
+# system default (no external font to load).
+CLOCK_FONTS = {
+    "Courier New": None,
+    "Orbitron": "Orbitron",
+    "Share Tech Mono": "Share+Tech+Mono",
+    "VT323": "VT323",
+    "Major Mono Display": "Major+Mono+Display",
+    "Audiowide": "Audiowide",
+    "Chakra Petch": "Chakra+Petch",
+}
+DEFAULT_CLOCK_FONT = "Courier New"
+
+CLOCK_FONT_WEIGHTS = {
+    300: "Light",
+    400: "Regular",
+    500: "Medium",
+    600: "Semi-Bold",
+    700: "Bold",
+    800: "Extra Bold",
+    900: "Black",
+}
+DEFAULT_CLOCK_FONT_WEIGHT = 400
+
+
 @application.before_request
 def before_request():
     g.db = database.open_db()
@@ -152,9 +177,40 @@ def teardown_request(exception):
         database.close_db(g.db)
 
 
+def require_authorized_user():
+    """Returns the logged-in user dict, or None (flashing a message if they are pending approval)."""
+    token = request.cookies.get('token')
+    if not token:
+        return None
+
+    user = database.get_user(connection=g.db, token=token)
+    if not user:
+        return None
+
+    if user["authorized"] < 1:
+        flash("Your account has not been authorized yet.")
+        return None
+
+    return user
+
+
 @application.route('/', methods=['GET'])
 def index():
-    resp = make_response(render_template('home.html', title=settings.APP_TITLE, url_for=safe_url_for))
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
+
+    clock_font = user.get("clock_font") or DEFAULT_CLOCK_FONT
+    clock_font_weight = user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT
+
+    resp = make_response(render_template(
+        'home.html',
+        title=settings.APP_TITLE,
+        url_for=safe_url_for,
+        clock_font=clock_font,
+        clock_font_weight=clock_font_weight,
+        google_font_query=CLOCK_FONTS.get(clock_font)
+    ))
 
     # Add no-cache headers
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -180,7 +236,7 @@ def login():
             database.add_user(connection=g.db, email=user_email, token=token)
         database.update_user(connection=g.db, email=user_email, token=token, authorized=2)
 
-        response = make_response(redirect(safe_url_for('settings_page')))
+        response = make_response(redirect(safe_url_for('index')))
         response.set_cookie('token', token, max_age=settings.MAX_COOKIE_AGE, expires=time.time() + settings.MAX_COOKIE_AGE)
         return response
 
@@ -205,8 +261,8 @@ def oauth2callback():
     global google
 
     if application.debug:
-        # Just redirect to settings, since login is automatic in /login for debug
-        return redirect(safe_url_for('settings_page'))
+        # Just redirect to index, since login is automatic in /login for debug
+        return redirect(safe_url_for('index'))
 
     try:
         google.authorize_access_token()
@@ -240,7 +296,7 @@ def oauth2callback():
             user = database.get_user(connection=g.db, email=email)
 
         if user.get("authorized", 0) > 0:
-            response = make_response(redirect(safe_url_for('settings_page')))
+            response = make_response(redirect(safe_url_for('index')))
             response.set_cookie('token', token, max_age=settings.MAX_COOKIE_AGE, expires=time.time() + settings.MAX_COOKIE_AGE)
         else:
             flash("Your account has not been authorized yet. The admin has been notified.")
@@ -260,16 +316,8 @@ def oauth2callback():
 
 @application.route('/settings', methods=['GET'])
 def settings_page():
-    token = request.cookies.get('token')
-    if not token:
-        return redirect(safe_url_for('login'))
-
-    user = database.get_user(connection=g.db, token=token)
+    user = require_authorized_user()
     if not user:
-        return redirect(safe_url_for('login'))
-
-    if user["authorized"] < 1:
-        flash("Your account has not been authorized yet.")
         return redirect(safe_url_for('login'))
 
     is_admin = user["authorized"] > 1
@@ -298,9 +346,32 @@ def settings_page():
         admin=is_admin,
         unauthorized_users=unauthorized_users,
         authorized_users=authorized_users,
+        clock_fonts=CLOCK_FONTS,
+        clock_font=user.get("clock_font") or DEFAULT_CLOCK_FONT,
+        clock_font_weights=CLOCK_FONT_WEIGHTS,
+        clock_font_weight=user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT,
         title=settings.APP_TITLE,
         url_for=safe_url_for
     )
+
+
+@application.route('/settings/clock_font', methods=['POST'])
+def settings_clock_font_post():
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
+
+    font = request.form.get('clock_font')
+    try:
+        weight = int(request.form.get('clock_font_weight'))
+    except (TypeError, ValueError):
+        weight = DEFAULT_CLOCK_FONT_WEIGHT
+
+    if font in CLOCK_FONTS and weight in CLOCK_FONT_WEIGHTS:
+        database.update_user(connection=g.db, email=user["email"], clock_font=font, clock_font_weight=weight)
+        database.sync_temp_db_to_disk(connection=g.db)
+
+    return redirect(safe_url_for('settings_page'))
 
 
 @application.route('/settings/users', methods=['POST'])

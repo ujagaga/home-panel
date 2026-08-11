@@ -33,7 +33,9 @@ def init_database(connection):
                token TEXT UNIQUE,
                picture TEXT,
                authorized INTEGER DEFAULT 0,
-               last_seen TEXT
+               last_seen TEXT,
+               clock_font TEXT,
+               clock_font_weight INTEGER
            );
            """
         cursor.execute(sql)
@@ -46,6 +48,16 @@ def init_database(connection):
         """
         cursor.execute(insert_sql, (settings.SUPER_ADMIN, 2))  # 1 = authorized as user, 2 = admin
         connection.commit()
+    else:
+        # Migrate older databases that predate these columns
+        cursor.execute("PRAGMA table_info(users);")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "clock_font" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_font TEXT;")
+            connection.commit()
+        if "clock_font_weight" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN clock_font_weight INTEGER;")
+            connection.commit()
 
     cursor.close()
 
@@ -151,7 +163,8 @@ def get_user(connection, email: str = None, token: str = None, authorized: int =
     return user
 
 
-def update_user(connection, email: str, token: str = None, authorized: int = None, picture: str = None):
+def update_user(connection, email: str, token: str = None, authorized: int = None, picture: str = None,
+                 clock_font: str = None, clock_font_weight: int = None):
     user = get_user(connection, email=email)
 
     if user:
@@ -161,9 +174,13 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             user["authorized"] = authorized
         if picture is not None:
             user["picture"] = picture
+        if clock_font is not None:
+            user["clock_font"] = clock_font
+        if clock_font_weight is not None:
+            user["clock_font_weight"] = clock_font_weight
 
-        sql = "UPDATE users SET token = ?, authorized = ?, picture = ? WHERE email = ?;"
-        params = (user["token"], user["authorized"], user["picture"], email)
+        sql = "UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ? WHERE email = ?;"
+        params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"], email)
 
         try:
             connection.execute(sql, params)
@@ -176,12 +193,17 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
 def setup_initial_db():
     os.makedirs(temp_dir, exist_ok=True)
 
-    if not os.path.isfile(persist_db):
-        connection = open_db(persist_db)
+    # Always run this, so schema changes (e.g. new columns) reach already-deployed databases too.
+    connection = open_db(persist_db)
+    init_database(connection)
+    close_db(connection)
+
+    if os.path.isfile(temp_db):
+        # The shared-memory copy may already exist from before this restart, so migrate it too.
+        connection = open_db(temp_db)
         init_database(connection)
         close_db(connection)
-
-    if not os.path.isfile(temp_db):
+    else:
         shutil.copy2(persist_db, temp_db)
 
 def sync_temp_db_to_disk(connection=None):

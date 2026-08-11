@@ -4,15 +4,39 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 
 <div class="container">
-  <a href="{{ url_for('index') }}" class="nav_btn" title="Back"><i class="fa-solid fa-house"></i></a>
+  <div class="settings_header">
+    <a href="{{ url_for('index') }}" class="nav_btn" title="Back"><i class="fa-solid fa-house"></i></a>
 
-  <div class="user_info_row">
-    <img src="{{ user.picture }}" alt="Your picture" class="user_picture">
-    <div class="user_text_info">
-      <p><strong>{{ user.email }}</strong></p>
-      <p>{% if admin %}Admin{% else %}User{% endif %}</p>
+    <div class="user_info_row">
+      <img src="{{ user.picture }}" alt="Your picture" class="user_picture">
+      <div class="user_text_info">
+        <p><strong>{{ user.email }}</strong></p>
+        <p>{% if admin %}Admin{% else %}User{% endif %}</p>
+      </div>
     </div>
   </div>
+
+  <h1>Settings</h1>
+
+  <form method="post" action="{{ url_for('settings_clock_font_post') }}" class="clock_font_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label for="clock_font">Clock font</label>
+    <select name="clock_font" id="clock_font">
+      {% for font, google_query in clock_fonts.items() %}
+      <option value="{{ font }}" data-google-font="{{ google_query or '' }}" {% if font == clock_font %}selected{% endif %}>{{ font }}</option>
+      {% endfor %}
+    </select>
+    <label for="clock_font_weight">Weight</label>
+    <select name="clock_font_weight" id="clock_font_weight">
+      {% for weight, label in clock_font_weights.items() %}
+      <option value="{{ weight }}" {% if weight == clock_font_weight %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <span id="clock_font_preview" class="clock_font_preview"></span>
+    <button type="submit" class="save_btn">Save</button>
+  </form>
+
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 
   {% if admin %}
   <h1>Pending Users</h1>
@@ -80,8 +104,6 @@
   {% else %}
     <p>No authorized users.</p>
   {% endif %}
-  {% else %}
-  <p>No settings available yet.</p>
   {% endif %}
 </div>
 {% endblock %}

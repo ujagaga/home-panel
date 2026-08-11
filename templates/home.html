@@ -2,11 +2,15 @@
 
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% if google_font_query %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ google_font_query }}:wght@300;400;500;600;700;800;900&display=swap">
+{% endif %}
 
 <a href="{{ url_for('settings_page') }}" class="settings_icon" title="Settings"><i class="fa-solid fa-gear"></i></a>
 
 <div class="clock_wrapper">
-  <div class="clock"><span id="hours">00</span><span class="colon">:</span><span id="minutes">00</span></div>
+  <div class="clock" style="font-family: '{{ clock_font }}', monospace; font-weight: {{ clock_font_weight }};"><span id="hours">00</span><span class="colon">:</span><span id="minutes">00</span></div>
 </div>
 
 <script src="{{ url_for('static', filename='js/home.js') }}"></script>

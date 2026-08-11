@@ -1,3 +1,19 @@
+.settings_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.settings_header .nav_btn {
+  margin-bottom: 0;
+}
+
+.settings_header .user_info_row {
+  margin-bottom: 0;
+}
+
 .user_info_row {
   display: flex;
   align-items: flex-start;
@@ -41,4 +57,23 @@
 .update_buttons {
   display: flex;
   gap: 0.5em;
+}
+
+.clock_font_form {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: 1.5rem;
+}
+
+.clock_font_form select {
+  padding: 0.4em;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.clock_font_preview {
+  font-size: 1.5rem;
+  min-width: 4.5em;
+  text-align: center;
 }
