@@ -1,9 +1,15 @@
-body {
-  background-color: #000;
+html, body {
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
 }
 
+body {
+  background-color: #000;
+}
+
 .clock_wrapper {
+  width: 100vw;
   height: 100vh;
   display: flex;
   align-items: center;
@@ -33,6 +39,7 @@ body {
 }
 
 .settings_icon {
+  box-sizing: border-box;
   position: fixed;
   top: 20px;
   right: -51px;
@@ -43,7 +50,7 @@ body {
   justify-content: center;
   color: #fff;
   font-size: 1.8rem;
-  border: 2px solid #fff;
+  border: 5px solid #fff;
   border-radius: 8px;
   transition: right 0.25s ease;
   z-index: 20;
