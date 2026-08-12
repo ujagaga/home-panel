@@ -26,8 +26,11 @@
 
 <div id="dim_overlay" class="dim_overlay" data-start="{{ dim_start_hour }}" data-end="{{ dim_end_hour }}" data-level="{{ dim_level }}"></div>
 
+<button type="button" id="fullscreen_btn" class="fullscreen_btn" title="Fullscreen"><i class="fa-solid fa-expand"></i></button>
+
 <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 <script src="{{ url_for('static', filename='js/weather.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dim.js') }}"></script>
 <script src="{{ url_for('static', filename='js/wakelock.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fullscreen.js') }}"></script>
 {% endblock %}
