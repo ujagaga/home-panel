@@ -144,6 +144,12 @@ if os.path.isfile(client_secrets_path):
         logger.error(f"Failed to register Google OAuth: {e}")
 
 
+# Not a real account: a row in the users table whose settings are shown to anyone who
+# isn't logged in. `authorized` is set to a sentinel outside 0/1/2 so it never appears
+# in the pending/authorized user lists.
+GUEST_EMAIL = "__guest__"
+GUEST_AUTHORIZED = -1
+
 # Curated clock fonts. Value is the Google Fonts family query param, or None for the
 # system default (no external font to load).
 CLOCK_FONTS = {
@@ -168,13 +174,18 @@ CLOCK_FONT_WEIGHTS = {
 }
 DEFAULT_CLOCK_FONT_WEIGHT = 400
 
-# Curated tileable floral background patterns for the clock text. Each has its own
+# Curated tileable background patterns for the clock text. Each has its own
 # native tile size (px) used for background-size so it repeats cleanly.
 CLOCK_PATTERNS = {
     "Solid": {"template": "floral2", "tile": 60},
     "Daisy Grid": {"template": "floral1", "tile": 80},
     "Clover Bloom": {"template": "floral2", "tile": 60},
     "Vine Blossom": {"template": "floral3", "tile": 100},
+    "Camo": {"template": "camo", "tile": 120},
+    "Leaves": {"template": "leaves", "tile": 100},
+    "Playing Cards": {"template": "cards", "tile": 120},
+    "Bricks": {"template": "bricks", "tile": 80},
+    "Puzzle": {"template": "puzzle", "tile": 100},
 }
 DEFAULT_CLOCK_PATTERN = "Daisy Grid"
 DEFAULT_CLOCK_PATTERN_COLOR = "#e8708a"
@@ -195,10 +206,29 @@ DEFAULT_WEATHER_SIZE = 100
 
 HEX_COLOR_RE = re.compile(r'^#[0-9a-fA-F]{6}$')
 
+# ---------------------- Dim display ----------------------
+# Opacity (%) of the black overlay drawn over the whole page during the scheduled hours.
+# 0 ("Off") means the schedule has no visible effect, so start/end hours never need to be cleared.
+DIM_LEVELS = {
+    0: "Off",
+    25: "Low",
+    50: "Medium",
+    75: "High",
+    100: "Very High",
+}
+DEFAULT_DIM_LEVEL = 0
+DEFAULT_DIM_START_HOUR = 22
+DEFAULT_DIM_END_HOUR = 6
+
 # ---------------------- Weather ----------------------
 WEATHER_API_URL = "https://api.open-meteo.com/v1/forecast"
 WEATHER_CACHE_SECONDS = 30 * 60
 WEATHER_LOOKAHEAD_HOURS = 8
+
+# Shown on the home page to anyone who isn't logged in.
+GUEST_WEATHER_LAT = 45.2671
+GUEST_WEATHER_LON = 19.8335
+GUEST_WEATHER_CITY = "Novi Sad"
 
 NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 PLACE_NAME_SUFFIX_RE = re.compile(r'^City of\s+|\s+(Municipality|District|County|Region|Province)$')
@@ -362,20 +392,35 @@ def resolve_clock_display(user):
     }
 
 
+def resolve_dim_display(user):
+    """Builds the dim-schedule template vars. 0/1-23 are valid hours, so `or` (which
+    would treat 0 as falsy) can't be used for the fallback — only None means unset."""
+    dim_start_hour = user.get("dim_start_hour")
+    dim_end_hour = user.get("dim_end_hour")
+    dim_level = user.get("dim_level")
+
+    return {
+        "dim_start_hour": dim_start_hour if dim_start_hour is not None else DEFAULT_DIM_START_HOUR,
+        "dim_end_hour": dim_end_hour if dim_end_hour is not None else DEFAULT_DIM_END_HOUR,
+        "dim_level": dim_level if dim_level is not None else DEFAULT_DIM_LEVEL,
+    }
+
+
 @application.route('/', methods=['GET'])
 def index():
     user = require_authorized_user()
-    if not user:
-        return redirect(safe_url_for('login'))
+    # Anyone not logged in sees whatever the admin last set as the guest default.
+    display_source = user or database.get_user(connection=g.db, email=GUEST_EMAIL) or {}
 
     resp = make_response(render_template(
         'home.html',
         title=settings.APP_TITLE,
         url_for=safe_url_for,
-        show_settings_icon=True,
+        corner_mode="settings" if user else "login",
         public_key=None,
-        weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
-        **resolve_clock_display(user)
+        weather_size=display_source.get("weather_size") or DEFAULT_WEATHER_SIZE,
+        **resolve_clock_display(display_source),
+        **resolve_dim_display(display_source)
     ))
 
     # Add no-cache headers
@@ -400,10 +445,11 @@ def public_home(key):
         'home.html',
         title=settings.APP_TITLE,
         url_for=safe_url_for,
-        show_settings_icon=False,
+        corner_mode="none",
         public_key=key,
         weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
-        **resolve_clock_display(user)
+        **resolve_clock_display(user),
+        **resolve_dim_display(user)
     )
 
 
@@ -417,20 +463,23 @@ def weather_json():
         )
         if not user or user["authorized"] < 1:
             return jsonify({"available": False}), 404
+        lat, lon, city = user.get("weather_lat"), user.get("weather_lon"), user.get("weather_city")
     else:
         user = require_authorized_user()
         if not user:
-            return jsonify({"available": False}), 401
+            user = database.get_user(connection=g.db, email=GUEST_EMAIL)
+        if user and user.get("weather_lat") is not None and user.get("weather_lon") is not None:
+            lat, lon, city = user.get("weather_lat"), user.get("weather_lon"), user.get("weather_city")
+        else:
+            lat, lon, city = GUEST_WEATHER_LAT, GUEST_WEATHER_LON, GUEST_WEATHER_CITY
 
-    lat = user.get("weather_lat")
-    lon = user.get("weather_lon")
     if lat is None or lon is None:
         return jsonify({"available": False})
 
     # Copy: fetch_weather() may return the shared cached dict, and different users
     # can round to the same cache key while having different saved city names.
     data = dict(fetch_weather(lat, lon))
-    data["city"] = user.get("weather_city")
+    data["city"] = city
     return jsonify(data)
 
 
@@ -592,9 +641,67 @@ def settings_page():
         weather_lon=user.get("weather_lon"),
         weather_sizes=WEATHER_SIZES,
         weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
+        dim_levels=DIM_LEVELS,
         title=settings.APP_TITLE,
-        url_for=safe_url_for
+        url_for=safe_url_for,
+        **resolve_dim_display(user)
     )
+
+
+@application.route('/settings/guest_default', methods=['POST'])
+def settings_guest_default_post():
+    user = require_authorized_user()
+    if not user or user["authorized"] < 2:
+        flash("You are not authorized to perform this action.")
+        return redirect(safe_url_for('settings_page'))
+
+    if not database.get_user(connection=g.db, email=GUEST_EMAIL):
+        database.add_user(connection=g.db, email=GUEST_EMAIL, token=None)
+
+    dim_vars = resolve_dim_display(user)
+    database.update_user(
+        connection=g.db, email=GUEST_EMAIL, authorized=GUEST_AUTHORIZED,
+        clock_font=user.get("clock_font") or DEFAULT_CLOCK_FONT,
+        clock_font_weight=user.get("clock_font_weight") or DEFAULT_CLOCK_FONT_WEIGHT,
+        clock_pattern=user.get("clock_pattern") or DEFAULT_CLOCK_PATTERN,
+        clock_pattern_color=user.get("clock_pattern_color") or DEFAULT_CLOCK_PATTERN_COLOR,
+        clock_pattern_bg_color=user.get("clock_pattern_bg_color") or DEFAULT_CLOCK_PATTERN_BG_COLOR,
+        clock_pattern_size=user.get("clock_pattern_size") or DEFAULT_CLOCK_PATTERN_SIZE,
+        weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
+        dim_start_hour=dim_vars["dim_start_hour"],
+        dim_end_hour=dim_vars["dim_end_hour"],
+        dim_level=dim_vars["dim_level"],
+    )
+    database.set_weather_location(
+        connection=g.db, email=GUEST_EMAIL,
+        lat=user.get("weather_lat"), lon=user.get("weather_lon"), city=user.get("weather_city")
+    )
+
+    database.sync_temp_db_to_disk(connection=g.db)
+    flash("Your current settings are now shown to visitors who aren't logged in.")
+    return redirect(safe_url_for('settings_page'))
+
+
+@application.route('/settings/dim', methods=['POST'])
+def settings_dim_post():
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
+
+    try:
+        start_hour = int(request.form.get('dim_start_hour'))
+        end_hour = int(request.form.get('dim_end_hour'))
+        level = int(request.form.get('dim_level'))
+    except (TypeError, ValueError):
+        flash("Invalid dim schedule.")
+        return redirect(safe_url_for('settings_page'))
+
+    if 0 <= start_hour <= 23 and 0 <= end_hour <= 23 and level in DIM_LEVELS:
+        database.update_user(connection=g.db, email=user["email"], dim_start_hour=start_hour,
+                              dim_end_hour=end_hour, dim_level=level)
+        database.sync_temp_db_to_disk(connection=g.db)
+
+    return redirect(safe_url_for('settings_page'))
 
 
 @application.route('/settings/weather', methods=['POST'])

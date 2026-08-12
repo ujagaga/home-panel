@@ -16,7 +16,20 @@
     </div>
   </div>
 
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <p class="flash_notice">{{ messages[0] }}</p>
+    {% endif %}
+  {% endwith %}
+
   <p class="designated_link"><strong>Designated Link:</strong> <a href="{{ designated_link }}">{{ designated_link }}</a></p>
+  {% if admin %}
+  <form method="post" action="{{ url_for('settings_guest_default_post') }}" class="guest_default_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="save_btn">Set as Guest Default</button>
+  </form>
+  <p class="weather_hint">Applies your clock, weather, and dim settings to what visitors see when not logged in.</p>
+  {% endif %}
 
   <h1>Clock Settings</h1>
 
@@ -112,6 +125,45 @@
   {% if weather_lat is none or weather_lon is none %}
   <p class="weather_hint">No location set — the weather widget is hidden on your home page.</p>
   {% endif %}
+
+  <h1>Dim Display</h1>
+  <form method="post" action="{{ url_for('settings_dim_post') }}" class="weather_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <table class="clock_settings_table">
+      <tr>
+        <td><label for="dim_start_hour">Start hour</label></td>
+        <td>
+          <select name="dim_start_hour" id="dim_start_hour">
+            {% for hour in range(24) %}
+            <option value="{{ hour }}" {% if hour == dim_start_hour %}selected{% endif %}>{{ "%02d:00"|format(hour) }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="dim_end_hour">End hour</label></td>
+        <td>
+          <select name="dim_end_hour" id="dim_end_hour">
+            {% for hour in range(24) %}
+            <option value="{{ hour }}" {% if hour == dim_end_hour %}selected{% endif %}>{{ "%02d:00"|format(hour) }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td><label for="dim_level">Level</label></td>
+        <td>
+          <select name="dim_level" id="dim_level">
+            {% for level, label in dim_levels.items() %}
+            <option value="{{ level }}" {% if level == dim_level %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+    </table>
+    <button type="submit" class="save_btn">Save</button>
+  </form>
+  <p class="weather_hint">Dims the whole screen with a black overlay between the start and end hour. Set Level to Off to disable.</p>
 
   {% if admin %}
   <h1>Pending Users</h1>

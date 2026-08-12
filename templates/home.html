@@ -7,16 +7,27 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family={{ google_font_query }}:wght@300;400;500;600;700;800;900&display=swap">
 {% endif %}
 
-{% if show_settings_icon %}
-<a href="{{ url_for('settings_page') }}" class="settings_icon" title="Settings"><i class="fa-solid fa-gear"></i></a>
+{% if corner_mode == "settings" %}
+<div class="corner_menu">
+  <a href="{{ url_for('settings_page') }}" class="corner_btn" title="Settings"><i class="fa-solid fa-gear"></i></a>
+  <a href="{{ url_for('logout') }}" class="corner_btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></a>
+</div>
+{% elif corner_mode == "login" %}
+<div class="corner_menu">
+  <a href="{{ url_for('login') }}" class="corner_btn" title="Login"><i class="fa-brands fa-google"></i></a>
+</div>
 {% endif %}
 
 <div id="weather_widget" class="weather_widget" data-key="{{ public_key or '' }}" data-size="{{ weather_size }}"></div>
 
 <div class="clock_wrapper">
-  <div class="clock" style="font-family: '{{ clock_font }}', monospace; font-weight: {{ clock_font_weight }}; background-image: url('{{ url_for('pattern_svg', name=clock_pattern, color=clock_pattern_color, bg_color=clock_pattern_bg_color) }}'); background-size: {{ pattern_tile }}px {{ pattern_tile }}px;"><span id="hours">00</span><span class="colon">:</span><span id="minutes">00</span></div>
+  <div class="clock" style="font-family: '{{ clock_font }}', monospace; font-weight: {{ clock_font_weight }}; background-image: url('{{ url_for('pattern_svg', name=clock_pattern, color=clock_pattern_color, bg_color=clock_pattern_bg_color) }}'); background-size: {{ pattern_tile }}px {{ pattern_tile }}px;"><span class="digit" id="h1">0</span><span class="digit" id="h2">0</span><span class="colon">:</span><span class="digit" id="m1">0</span><span class="digit" id="m2">0</span></div>
 </div>
+
+<div id="dim_overlay" class="dim_overlay" data-start="{{ dim_start_hour }}" data-end="{{ dim_end_hour }}" data-level="{{ dim_level }}"></div>
 
 <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 <script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dim.js') }}"></script>
+<script src="{{ url_for('static', filename='js/wakelock.js') }}"></script>
 {% endblock %}

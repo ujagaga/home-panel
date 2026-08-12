@@ -36,11 +36,24 @@ body {
   }
 }
 
-.settings_icon {
+.corner_menu {
   box-sizing: border-box;
   position: fixed;
   top: 20px;
   right: -51px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: right 0.25s ease;
+  z-index: 20;
+}
+
+.corner_menu:hover {
+  right: 0;
+}
+
+.corner_btn {
+  box-sizing: border-box;
   width: 56px;
   height: 56px;
   display: flex;
@@ -50,12 +63,9 @@ body {
   font-size: 1.8rem;
   border: 5px solid #fff;
   border-radius: 8px;
-  transition: right 0.25s ease;
-  z-index: 20;
 }
 
-.settings_icon:hover {
-  right: 0;
+.corner_btn:hover {
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -82,4 +92,14 @@ body {
 .weather_change {
   font-size: 0.9rem;
   opacity: 0.8;
+}
+
+.dim_overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 30;
+  transition: opacity 2s ease;
 }

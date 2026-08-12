@@ -43,7 +43,10 @@ def init_database(connection):
                weather_lat REAL,
                weather_lon REAL,
                weather_size INTEGER,
-               weather_city TEXT
+               weather_city TEXT,
+               dim_start_hour INTEGER,
+               dim_end_hour INTEGER,
+               dim_level INTEGER
            );
            """
         cursor.execute(sql)
@@ -89,6 +92,15 @@ def init_database(connection):
             connection.commit()
         if "weather_city" not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN weather_city TEXT;")
+            connection.commit()
+        if "dim_start_hour" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN dim_start_hour INTEGER;")
+            connection.commit()
+        if "dim_end_hour" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN dim_end_hour INTEGER;")
+            connection.commit()
+        if "dim_level" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN dim_level INTEGER;")
             connection.commit()
 
     cursor.close()
@@ -198,7 +210,8 @@ def get_user(connection, email: str = None, token: str = None, authorized: int =
 def update_user(connection, email: str, token: str = None, authorized: int = None, picture: str = None,
                  clock_font: str = None, clock_font_weight: int = None,
                  clock_pattern: str = None, clock_pattern_color: str = None, clock_pattern_bg_color: str = None,
-                 clock_pattern_size: int = None, weather_size: int = None):
+                 clock_pattern_size: int = None, weather_size: int = None,
+                 dim_start_hour: int = None, dim_end_hour: int = None, dim_level: int = None):
     user = get_user(connection, email=email)
 
     if user:
@@ -222,13 +235,20 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             user["clock_pattern_size"] = clock_pattern_size
         if weather_size is not None:
             user["weather_size"] = weather_size
+        if dim_start_hour is not None:
+            user["dim_start_hour"] = dim_start_hour
+        if dim_end_hour is not None:
+            user["dim_end_hour"] = dim_end_hour
+        if dim_level is not None:
+            user["dim_level"] = dim_level
 
         sql = """UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ?,
                  clock_pattern = ?, clock_pattern_color = ?, clock_pattern_bg_color = ?, clock_pattern_size = ?,
-                 weather_size = ? WHERE email = ?;"""
+                 weather_size = ?, dim_start_hour = ?, dim_end_hour = ?, dim_level = ? WHERE email = ?;"""
         params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"],
                    user["clock_pattern"], user["clock_pattern_color"], user["clock_pattern_bg_color"],
-                   user["clock_pattern_size"], user["weather_size"], email)
+                   user["clock_pattern_size"], user["weather_size"],
+                   user["dim_start_hour"], user["dim_end_hour"], user["dim_level"], email)
 
         try:
             connection.execute(sql, params)
@@ -248,6 +268,8 @@ def set_weather_location(connection, email: str, lat, lon, city=None):
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         logger.exception(f"ERROR updating weather location on line {exc_tb.tb_lineno}!\n\t{exc}")
+
+
 
 
 def setup_initial_db():
