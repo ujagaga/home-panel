@@ -15,3 +15,8 @@ APP_SECRET_KEY = 'SomeSuperSecretKey123'        # Used for flask secure communic
 DB_NAME = "database.db"
 
 CLIENT_SECRETS_FILE = "client_secret.json"
+
+# Optional: only needed for the Slideshow feature (Settings -> Slideshow). Create in Google
+# Cloud Console: enable the "Google Drive API", then Credentials -> Create Credentials -> API key.
+# The slideshow only works for Drive folders shared as "Anyone with the link".
+GOOGLE_DRIVE_API_KEY = "your_google_drive_api_key"

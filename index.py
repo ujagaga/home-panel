@@ -338,6 +338,62 @@ def fetch_weather(lat, lon):
         return cached["data"] if cached else {"available": False}
 
 
+# ---------------------- Slideshow ----------------------
+DRIVE_FILES_API_URL = "https://www.googleapis.com/drive/v3/files"
+DRIVE_FOLDER_URL_RE = re.compile(r'/folders/([a-zA-Z0-9_-]+)')
+SLIDESHOW_CACHE_SECONDS = 15 * 60
+
+# Minutes between slides.
+SLIDESHOW_INTERVALS = {
+    1: "1 minute",
+    2: "2 minutes",
+    5: "5 minutes",
+    10: "10 minutes",
+    15: "15 minutes",
+    30: "30 minutes",
+    60: "1 hour",
+    240: "4 hours",
+    480: "8 hours",
+    720: "12 hours",
+    1440: "24 hours",
+}
+DEFAULT_SLIDESHOW_INTERVAL = 1
+
+_slideshow_cache = {}
+
+
+def extract_drive_folder_id(url):
+    match = DRIVE_FOLDER_URL_RE.search(url)
+    return match.group(1) if match else None
+
+
+def fetch_slideshow_images(folder_id):
+    api_key = getattr(settings, 'GOOGLE_DRIVE_API_KEY', None)
+    if not api_key:
+        return []
+
+    cached = _slideshow_cache.get(folder_id)
+    now = time.time()
+    if cached and now - cached["ts"] < SLIDESHOW_CACHE_SECONDS:
+        return cached["data"]
+
+    try:
+        resp = requests.get(DRIVE_FILES_API_URL, params={
+            "q": f"'{folder_id}' in parents and mimeType contains 'image/' and trashed = false",
+            "fields": "files(id)",
+            "pageSize": 100,
+            "key": api_key,
+        }, timeout=10)
+        resp.raise_for_status()
+        files = resp.json().get("files", [])
+        images = [f"https://drive.google.com/thumbnail?id={f['id']}&sz=w2000" for f in files]
+        _slideshow_cache[folder_id] = {"data": images, "ts": now}
+        return images
+    except Exception as e:
+        logger.exception(f"Slideshow fetch failed: {e}")
+        return cached["data"] if cached else []
+
+
 @application.before_request
 def before_request():
     g.db = database.open_db()
@@ -411,6 +467,8 @@ def index():
     user = require_authorized_user()
     # Anyone not logged in sees whatever the admin last set as the guest default.
     display_source = user or database.get_user(connection=g.db, email=GUEST_EMAIL) or {}
+    # Slideshow is only shown to an actual logged-in user, never on the anonymous/guest view.
+    slideshow_active = bool(user and user.get("slideshow_enabled") and user.get("slideshow_folder_id"))
 
     resp = make_response(render_template(
         'home.html',
@@ -418,6 +476,8 @@ def index():
         url_for=safe_url_for,
         corner_mode="settings" if user else "login",
         public_key=None,
+        slideshow_active=slideshow_active,
+        slideshow_interval=display_source.get("slideshow_interval") or DEFAULT_SLIDESHOW_INTERVAL,
         weather_size=display_source.get("weather_size") or DEFAULT_WEATHER_SIZE,
         **resolve_clock_display(display_source),
         **resolve_dim_display(display_source)
@@ -447,6 +507,8 @@ def public_home(key):
         url_for=safe_url_for,
         corner_mode="none",
         public_key=key,
+        slideshow_active=bool(user.get("slideshow_enabled") and user.get("slideshow_folder_id")),
+        slideshow_interval=user.get("slideshow_interval") or DEFAULT_SLIDESHOW_INTERVAL,
         weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
         **resolve_clock_display(user),
         **resolve_dim_display(user)
@@ -481,6 +543,27 @@ def weather_json():
     data = dict(fetch_weather(lat, lon))
     data["city"] = city
     return jsonify(data)
+
+
+@application.route('/slideshow.json')
+def slideshow_json():
+    key = request.args.get('key')
+    if key:
+        user = next(
+            (u for u in database.get_user(connection=g.db) if helper.email_to_key(u["email"]) == key),
+            None
+        )
+        if not user or user["authorized"] < 1:
+            return jsonify({"enabled": False}), 404
+    else:
+        user = require_authorized_user()
+        if not user:
+            return jsonify({"enabled": False}), 401
+
+    if not user.get("slideshow_enabled") or not user.get("slideshow_folder_id"):
+        return jsonify({"enabled": False})
+
+    return jsonify({"enabled": True, "images": fetch_slideshow_images(user["slideshow_folder_id"])})
 
 
 @application.route('/authorize')
@@ -642,6 +725,10 @@ def settings_page():
         weather_sizes=WEATHER_SIZES,
         weather_size=user.get("weather_size") or DEFAULT_WEATHER_SIZE,
         dim_levels=DIM_LEVELS,
+        slideshow_folder_id=user.get("slideshow_folder_id"),
+        slideshow_enabled=bool(user.get("slideshow_enabled")),
+        slideshow_intervals=SLIDESHOW_INTERVALS,
+        slideshow_interval=user.get("slideshow_interval") or DEFAULT_SLIDESHOW_INTERVAL,
         title=settings.APP_TITLE,
         url_for=safe_url_for,
         **resolve_dim_display(user)
@@ -701,6 +788,36 @@ def settings_dim_post():
                               dim_end_hour=end_hour, dim_level=level)
         database.sync_temp_db_to_disk(connection=g.db)
 
+    return redirect(safe_url_for('settings_page'))
+
+
+@application.route('/settings/slideshow', methods=['POST'])
+def settings_slideshow_post():
+    user = require_authorized_user()
+    if not user:
+        return redirect(safe_url_for('login'))
+
+    url = request.form.get('slideshow_url', '').strip()
+    enabled = request.form.get('slideshow_enabled') == 'on'
+
+    try:
+        interval = int(request.form.get('slideshow_interval'))
+    except (TypeError, ValueError):
+        interval = DEFAULT_SLIDESHOW_INTERVAL
+    if interval in SLIDESHOW_INTERVALS:
+        database.update_user(connection=g.db, email=user["email"], slideshow_interval=interval)
+
+    if not url:
+        database.set_slideshow(connection=g.db, email=user["email"], folder_id=None, enabled=False)
+    else:
+        folder_id = extract_drive_folder_id(url)
+        if not folder_id:
+            flash("Couldn't find a folder ID in that link. Use a Google Drive folder link, shared as \"Anyone with the link.\"")
+            return redirect(safe_url_for('settings_page'))
+
+        database.set_slideshow(connection=g.db, email=user["email"], folder_id=folder_id, enabled=enabled)
+
+    database.sync_temp_db_to_disk(connection=g.db)
     return redirect(safe_url_for('settings_page'))
 
 

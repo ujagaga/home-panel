@@ -29,7 +29,15 @@ Reached via the gear icon; requires login.
   editable fields — you can also just type coordinates directly), and a size for the widget. The
   city name is reverse-geocoded automatically via OpenStreetMap's Nominatim and shown above the
   temperature. Leave both coordinate fields blank and save to remove the widget.
-- **User management** (admin only): approve or remove pending users, promote users to admin.
+- **Slideshow**: paste a Google Drive folder link (shared as "Anyone with the link") and an Enable
+  switch. When on, the clock and weather shrink to the left third of the screen and the folder's
+  images rotate through the rest, scaled to fit. Requires `GOOGLE_DRIVE_API_KEY` in `settings.py`
+  (see `settings.py.example`) — without it the switch has no effect.
+- **Dim Display**: a start/end hour and a strength, dimming the whole screen with a black overlay
+  during those hours (e.g. for use overnight).
+- **User management** (admin only): approve or remove pending users, promote users to admin. Admins
+  also get a "Set as Guest Default" button next to the Designated Link, which copies their current
+  clock/weather/dim settings to what's shown to anyone who isn't logged in.
 
 ## User accounts
 

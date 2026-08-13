@@ -12,10 +12,12 @@ function updateClock() {
 
 function fitClockToWindow() {
   const clockEl = document.querySelector('.clock');
+  const wrapperEl = document.querySelector('.clock_wrapper');
   const digitEls = DIGIT_IDS.map(id => document.getElementById(id));
-  const padding = 0.02; // 2% of window width/height on each side
-  const availableWidth = window.innerWidth * (1 - 2 * padding);
-  const availableHeight = window.innerHeight * (1 - 2 * padding);
+  const padding = 0.02; // 2% of the available width/height on each side
+  const wrapperRect = wrapperEl.getBoundingClientRect();
+  const availableWidth = wrapperRect.width * (1 - 2 * padding);
+  const availableHeight = wrapperRect.height * (1 - 2 * padding);
 
   const baseline = 100; // px, used just to measure at a known scale
   clockEl.style.fontSize = baseline + 'px';

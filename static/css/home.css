@@ -8,12 +8,39 @@ body {
   background-color: #000;
 }
 
-.clock_wrapper {
+.page_layout {
+  display: flex;
   width: 100vw;
+  height: 100vh;
+}
+
+.clock_wrapper {
+  flex: 1 1 auto;
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.page_layout--split .clock_wrapper {
+  flex: 0 0 33.333%;
+  width: 33.333%;
+}
+
+.slideshow_container {
+  flex: 1 1 auto;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #000;
+}
+
+.slideshow_container img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 
 .clock {

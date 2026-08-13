@@ -46,7 +46,10 @@ def init_database(connection):
                weather_city TEXT,
                dim_start_hour INTEGER,
                dim_end_hour INTEGER,
-               dim_level INTEGER
+               dim_level INTEGER,
+               slideshow_folder_id TEXT,
+               slideshow_enabled INTEGER,
+               slideshow_interval INTEGER
            );
            """
         cursor.execute(sql)
@@ -101,6 +104,15 @@ def init_database(connection):
             connection.commit()
         if "dim_level" not in columns:
             cursor.execute("ALTER TABLE users ADD COLUMN dim_level INTEGER;")
+            connection.commit()
+        if "slideshow_folder_id" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN slideshow_folder_id TEXT;")
+            connection.commit()
+        if "slideshow_enabled" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN slideshow_enabled INTEGER;")
+            connection.commit()
+        if "slideshow_interval" not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN slideshow_interval INTEGER;")
             connection.commit()
 
     cursor.close()
@@ -211,7 +223,8 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
                  clock_font: str = None, clock_font_weight: int = None,
                  clock_pattern: str = None, clock_pattern_color: str = None, clock_pattern_bg_color: str = None,
                  clock_pattern_size: int = None, weather_size: int = None,
-                 dim_start_hour: int = None, dim_end_hour: int = None, dim_level: int = None):
+                 dim_start_hour: int = None, dim_end_hour: int = None, dim_level: int = None,
+                 slideshow_interval: int = None):
     user = get_user(connection, email=email)
 
     if user:
@@ -241,14 +254,18 @@ def update_user(connection, email: str, token: str = None, authorized: int = Non
             user["dim_end_hour"] = dim_end_hour
         if dim_level is not None:
             user["dim_level"] = dim_level
+        if slideshow_interval is not None:
+            user["slideshow_interval"] = slideshow_interval
 
         sql = """UPDATE users SET token = ?, authorized = ?, picture = ?, clock_font = ?, clock_font_weight = ?,
                  clock_pattern = ?, clock_pattern_color = ?, clock_pattern_bg_color = ?, clock_pattern_size = ?,
-                 weather_size = ?, dim_start_hour = ?, dim_end_hour = ?, dim_level = ? WHERE email = ?;"""
+                 weather_size = ?, dim_start_hour = ?, dim_end_hour = ?, dim_level = ?, slideshow_interval = ?
+                 WHERE email = ?;"""
         params = (user["token"], user["authorized"], user["picture"], user["clock_font"], user["clock_font_weight"],
                    user["clock_pattern"], user["clock_pattern_color"], user["clock_pattern_bg_color"],
                    user["clock_pattern_size"], user["weather_size"],
-                   user["dim_start_hour"], user["dim_end_hour"], user["dim_level"], email)
+                   user["dim_start_hour"], user["dim_end_hour"], user["dim_level"],
+                   user["slideshow_interval"], email)
 
         try:
             connection.execute(sql, params)
@@ -270,6 +287,16 @@ def set_weather_location(connection, email: str, lat, lon, city=None):
         logger.exception(f"ERROR updating weather location on line {exc_tb.tb_lineno}!\n\t{exc}")
 
 
+def set_slideshow(connection, email: str, folder_id, enabled: bool):
+    """Separate from update_user because folder_id legitimately needs to be set to NULL (cleared)."""
+    sql = "UPDATE users SET slideshow_folder_id = ?, slideshow_enabled = ? WHERE email = ?;"
+
+    try:
+        connection.execute(sql, (folder_id, int(bool(enabled)), email))
+        connection.commit()
+    except Exception as exc:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        logger.exception(f"ERROR updating slideshow settings on line {exc_tb.tb_lineno}!\n\t{exc}")
 
 
 def setup_initial_db():

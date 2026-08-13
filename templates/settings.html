@@ -165,6 +165,33 @@
   </form>
   <p class="weather_hint">Dims the whole screen with a black overlay between the start and end hour. Set Level to Off to disable.</p>
 
+  <h1>Slideshow</h1>
+  <form method="post" action="{{ url_for('settings_slideshow_post') }}" class="weather_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <table class="clock_settings_table">
+      <tr>
+        <td><label for="slideshow_url">Drive folder link</label></td>
+        <td><input type="text" name="slideshow_url" id="slideshow_url" placeholder="Paste a Google Drive folder link" value="{{ 'https://drive.google.com/drive/folders/' + slideshow_folder_id if slideshow_folder_id else '' }}"></td>
+      </tr>
+      <tr>
+        <td><label for="slideshow_enabled">Enable</label></td>
+        <td><input type="checkbox" name="slideshow_enabled" id="slideshow_enabled" {% if slideshow_enabled %}checked{% endif %}></td>
+      </tr>
+      <tr>
+        <td><label for="slideshow_interval">Change after</label></td>
+        <td>
+          <select name="slideshow_interval" id="slideshow_interval">
+            {% for minutes, label in slideshow_intervals.items() %}
+            <option value="{{ minutes }}" {% if minutes == slideshow_interval %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </td>
+      </tr>
+    </table>
+    <button type="submit" class="save_btn">Save</button>
+  </form>
+  <p class="weather_hint">The folder must be shared as "Anyone with the link" can view. Shows next to the clock on your home page and Designated Link. Leave the link blank and save to remove it.</p>
+
   {% if admin %}
   <h1>Pending Users</h1>
   {% if unauthorized_users %}
