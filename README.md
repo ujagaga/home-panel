@@ -1,8 +1,16 @@
 # Home Panel
 
 Python3 Flask app that shows a full-screen digital clock, with per-user appearance settings and an
-optional weather widget. Login is done using Google OAuth2, so user emails must be Google accounts
+optional weather widget and an image slideshow from a configured Google Drive folder. 
+Login is done using Google OAuth2, so user emails must be Google accounts
 — there is no password.
+
+The purpose is mainly to provide a large customizable clock that can be displayed in a web browser,
+so usable on an old smartphone, tablet, smart TV. More importantly, it is open source, 
+so you can fork it and adjust to your wim.
+
+A deployed app is available at 
+https://homepanel.ujagaga.in.rs/
 
 ## Home page
 
